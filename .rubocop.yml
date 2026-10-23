@@ -9,15 +9,16 @@ Naming/FileName:
   Exclude:
     - 'lib/auto-platform-guide.rb'
 
-# AutoPlatformGuide::Generator is a CLI tool, not a Rails service object: writing to
-# stdout and exiting are its interface, and its TOC/README rendering is one
-# cohesive unit split by helpers.
+# AutoPlatformGuide::Generator is a CLI tool and the rake tasks are a CLI surface,
+# not Rails service objects: writing to stdout and exiting are their interface.
+# The generator's TOC/README rendering is one cohesive unit split by helpers.
 Rails/Output:
   Exclude:
     - 'lib/auto_platform_guide/generator.rb'
 Rails/Exit:
   Exclude:
     - 'lib/auto_platform_guide/generator.rb'
+    - 'lib/auto_platform_guide/rake_tasks.rb'
 Metrics/ClassLength:
   Exclude:
     - 'lib/auto_platform_guide/generator.rb'

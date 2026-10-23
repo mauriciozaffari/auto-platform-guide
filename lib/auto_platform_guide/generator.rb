@@ -94,7 +94,7 @@ module AutoPlatformGuide
       stale.each { |spec_file| warn "  - #{spec_file} -> #{generate_output_filename(spec_file)}" }
       warn ''
       warn 'Regenerate the affected guide(s) and commit the result:'
-      stale.each { |spec_file| warn "  bin/generate-docs #{spec_file}" }
+      stale.each { |spec_file| warn %(  rake "auto_platform_guide:generate[#{spec_file}]") }
       false
     end
 

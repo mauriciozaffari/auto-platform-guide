@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'logger'
+require 'rake'
 require 'spec_helper'
 require 'auto_platform_guide/rspec'
 
@@ -301,9 +302,10 @@ RSpec.describe AutoPlatformGuide do
   end
 
   describe '.load_engine' do
-    def stub_rails_engine(initializers)
+    def stub_rails_engine(initializers, rake_tasks)
       engine_base = Class.new do
         define_singleton_method(:initializer) { |*args, &block| initializers << [args, block] }
+        define_singleton_method(:rake_tasks) { |&block| rake_tasks << block }
 
         def self.root
           Pathname.new(File.expand_path('../..', __dir__))
@@ -318,19 +320,23 @@ RSpec.describe AutoPlatformGuide do
       engine_base
     end
 
-    it 'loads the engine and registers view paths when Rails is present' do
+    it 'loads the engine, registers view paths and rake tasks when Rails is present' do
       initializers = []
-      engine_base = stub_rails_engine(initializers)
+      rake_tasks = []
+      engine_base = stub_rails_engine(initializers, rake_tasks)
 
       described_class.send(:load_engine)
 
-      expect(defined?(AutoPlatformGuide::Engine)).to be_truthy
       expect(AutoPlatformGuide::Engine.ancestors).to include(engine_base)
       expect(initializers.map(&:first)).to eq([['auto_platform_guide.view_paths', { before: :add_view_paths }]])
 
       app = double(config: double(paths: { 'app/views' => [] }))
       initializers.first.last.call(app)
       expect(app.config.paths['app/views']).to eq([engine_base.root.join('app', 'views')])
+
+      expect(rake_tasks.size).to eq(1)
+      rake_tasks.first.call
+      expect(Rake::Task.task_defined?('auto_platform_guide:generate')).to be(true)
     end
   end
 

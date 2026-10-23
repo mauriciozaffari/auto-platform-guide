@@ -7,5 +7,9 @@ module AutoPlatformGuide
     initializer 'auto_platform_guide.view_paths', before: :add_view_paths do |app|
       app.config.paths['app/views'].push(root.join('app', 'views'))
     end
+
+    rake_tasks do
+      require 'auto_platform_guide/rake_tasks'
+    end
   end
 end

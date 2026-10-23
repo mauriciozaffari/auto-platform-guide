@@ -8,6 +8,15 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Rake tasks for generating, checking, re-rendering and rebuilding the TOC,
+  shipped with the gem.
+
+### Removed
+
+- `bin/generate-docs`; use `auto_platform_guide:generate` instead.
+
 ## [0.1.0] - 2026-10-06
 
 - Initial release: spec-driven doc generator, doc_screenshot helper,

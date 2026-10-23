@@ -66,18 +66,21 @@ RSpec.configure do |config|
 end
 ```
 
-## CLI
+## Rake tasks
 
-`bin/generate-docs` is a thin wrapper around `AutoPlatformGuide::Generator.run`.
-It ships in this repository, not in the packaged gem — copy it into your app's
-`bin/`:
+Generating docs is a rake task shipped with the gem. Rails apps load it through
+the engine; anywhere else, require it from your `Rakefile`:
+
+```ruby
+require 'auto_platform_guide/rake_tasks'
+```
 
 ```bash
-bin/generate-docs                    # Generate docs for all documented specs
-bin/generate-docs spec/path/to/file  # Generate docs for a specific spec
-bin/generate-docs --check            # Verify committed docs match their specs
-bin/generate-docs --readme-only      # Rebuild only the README TOC
-bin/generate-docs --render-only      # Re-render from comments, reuse screenshots
+rake auto_platform_guide:generate                      # all documented specs
+rake "auto_platform_guide:generate[spec/foo_spec.rb]"  # one spec
+rake auto_platform_guide:check                         # verify docs; non-zero when stale
+rake auto_platform_guide:readme                        # rebuild the README TOC
+rake auto_platform_guide:render                        # re-render, reuse screenshots on disk
 ```
 
 ## Tests
