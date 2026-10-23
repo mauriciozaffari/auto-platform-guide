@@ -1,0 +1,457 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event.release.prerelease == false }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600
+        with:
+          ruby-version: 4.0.6
+          bundler-cache: true
+
+      - name: Validate release identity
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          [[ "$REPOSITORY" == "mauriciozaffari/auto-platform-guide" ]] ||
+            fail "release workflow must run in mauriciozaffari/auto-platform-guide"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            fail "release tag must match vX.Y.Z"
+
+          tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_sha="$(git rev-parse --verify HEAD)"
+          main_sha="$(git rev-parse --verify "refs/remotes/origin/main^{commit}")"
+
+          [[ "$tag_sha" == "$head_sha" ]] ||
+            fail "checked-out commit does not match ${RELEASE_TAG}"
+          [[ "$tag_sha" == "$RELEASE_SHA" ]] ||
+            fail "${RELEASE_TAG} does not match the release event SHA"
+          [[ "$tag_sha" == "$main_sha" ]] ||
+            fail "${RELEASE_TAG} is not the current origin/main commit"
+
+          version="$(ruby -Ilib -rauto_platform_guide/version -e 'print AutoPlatformGuide::VERSION')"
+          [[ "$RELEASE_TAG" == "v${version}" ]] ||
+            fail "${RELEASE_TAG} does not match AutoPlatformGuide::VERSION ${version}"
+
+      - name: Run CI
+        run: bin/ci
+
+      - name: Validate changelog update
+        env:
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          release_date="${PUBLISHED_AT%%T*}"
+          [[ "$release_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || {
+            echo "::error::release published_at must contain a YYYY-MM-DD date"
+            exit 1
+          }
+
+          bin/update_changelog \
+            --tag "$RELEASE_TAG" \
+            --date "$release_date" \
+            --repository "$REPOSITORY" \
+            --check \
+            CHANGELOG.md
+
+  publish:
+    needs: validate
+    if: ${{ github.event.release.prerelease == false && needs.validate.result == 'success' }}
+    runs-on: ubuntu-latest
+    environment: rubygems
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out immutable release commit
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - name: Validate immutable release refs
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          [[ "$REPOSITORY" == "mauriciozaffari/auto-platform-guide" ]] ||
+            fail "release workflow must run in mauriciozaffari/auto-platform-guide"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            fail "release tag must match vX.Y.Z"
+
+          tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_sha="$(git rev-parse --verify HEAD)"
+          main_sha="$(git rev-parse --verify "refs/remotes/origin/main^{commit}")"
+
+          [[ "$head_sha" == "$RELEASE_SHA" ]] ||
+            fail "checked-out commit does not match the release event SHA"
+          [[ "$tag_sha" == "$RELEASE_SHA" ]] ||
+            fail "${RELEASE_TAG} does not match the release event SHA"
+          [[ "$main_sha" == "$RELEASE_SHA" ]] ||
+            fail "${RELEASE_TAG} is not the current origin/main commit"
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600
+        with:
+          ruby-version: 4.0.6
+          bundler: none
+
+      - name: Validate gem version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          version="$(ruby -Ilib -rauto_platform_guide/version -e 'print AutoPlatformGuide::VERSION')"
+          if [[ "$RELEASE_TAG" != "v${version}" ]]; then
+            echo "::error::${RELEASE_TAG} does not match AutoPlatformGuide::VERSION ${version}"
+            exit 1
+          fi
+          printf 'VERSION=%s\n' "$version" >> "$GITHUB_ENV"
+
+      - name: Build exact gem
+        run: |
+          set -euo pipefail
+
+          gem_path="pkg/auto-platform-guide-${VERSION}.gem"
+          mkdir -p pkg
+          rm -f -- "$gem_path"
+          gem build auto-platform-guide.gemspec --output "$gem_path"
+          [[ -f "$gem_path" ]] || {
+            echo "::error::gem build did not create ${gem_path}"
+            exit 1
+          }
+          printf 'GEM_PATH=%s\n' "$gem_path" >> "$GITHUB_ENV"
+
+      - name: Inspect built gem
+        run: |
+          ruby -rrubygems/package <<'RUBY'
+          gem_path = ENV.fetch("GEM_PATH")
+          version = ENV.fetch("VERSION")
+          package = Gem::Package.new(gem_path)
+          package.verify
+          specification = package.spec
+
+          abort "expected gem name auto-platform-guide, got #{specification.name}" unless specification.name == "auto-platform-guide"
+          abort "expected gem version #{version}, got #{specification.version}" unless specification.version.to_s == version
+          abort "expected ruby platform, got #{specification.platform}" unless specification.platform.to_s == "ruby"
+          abort "expected no executables" unless specification.executables.empty?
+
+          files = package.contents
+          required_files = %w[
+            CHANGELOG.md
+            LICENSE.txt
+            README.md
+            lib/auto_platform_guide.rb
+            lib/auto_platform_guide/version.rb
+          ]
+          missing_files = required_files - files
+          abort "gem is missing required files: #{missing_files.join(', ')}" unless missing_files.empty?
+
+          excluded_files = %w[.gitignore .rspec Gemfile auto-platform-guide.gemspec]
+          excluded_prefixes = %w[bin/ spec/ docs/]
+          unexpected_files = files.select do |file|
+            excluded_files.include?(file) || excluded_prefixes.any? { |prefix| file.start_with?(prefix) }
+          end
+          abort "gem contains excluded files: #{unexpected_files.join(', ')}" unless unexpected_files.empty?
+          RUBY
+
+      - name: Check RubyGems version state
+        id: version-state
+        env:
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+
+          [[ "$RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]] || {
+            echo "::error::invalid workflow run attempt ${RUN_ATTEMPT}"
+            exit 1
+          }
+
+          api_url="https://rubygems.org/api/v2/rubygems/auto-platform-guide/versions/${VERSION}.json"
+          checks=12
+
+          status=""
+          for ((check = 1; check <= checks; check++)); do
+            status="$(curl \
+              --silent \
+              --show-error \
+              --location \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --output /dev/null \
+              --write-out '%{http_code}' \
+              "$api_url")"
+
+            if [[ "$status" == "200" ]]; then
+              break
+            fi
+            [[ "$status" == "404" ]] || {
+              echo "::error::RubyGems API returned HTTP ${status}"
+              exit 1
+            }
+            if (( check < checks )); then
+              sleep 5
+            fi
+          done
+
+          if [[ "$status" == "200" ]]; then
+            echo "should-push=false" >> "$GITHUB_OUTPUT"
+            echo "auto-platform-guide ${VERSION} is already published; skipping gem push"
+          else
+            echo "should-push=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure RubyGems credentials
+        if: ${{ steps.version-state.outputs.should-push == 'true' }}
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a
+
+      - name: Push exact gem
+        if: ${{ steps.version-state.outputs.should-push == 'true' }}
+        run: gem push "pkg/auto-platform-guide-${VERSION}.gem"
+
+      - name: Verify RubyGems API visibility
+        env:
+          SHOULD_PUSH: ${{ steps.version-state.outputs.should-push }}
+        run: |
+          set -euo pipefail
+
+          api_url="https://rubygems.org/api/v2/rubygems/auto-platform-guide/versions/${VERSION}.json"
+          api_response="$RUNNER_TEMP/auto-platform-guide-${VERSION}.json"
+          status=""
+
+          for ((check = 1; check <= 18; check++)); do
+            status="$(curl \
+              --silent \
+              --show-error \
+              --location \
+              --connect-timeout 10 \
+              --max-time 30 \
+              --output "$api_response" \
+              --write-out '%{http_code}' \
+              "$api_url")"
+
+            if [[ "$status" == "200" ]]; then
+              break
+            fi
+            [[ "$status" == "404" ]] || {
+              echo "::error::RubyGems API returned HTTP ${status}"
+              exit 1
+            }
+            if (( check < 18 )); then
+              sleep 5
+            fi
+          done
+
+          [[ "$status" == "200" ]] || {
+            echo "::error::auto-platform-guide ${VERSION} did not become visible through the RubyGems API"
+            exit 1
+          }
+
+          API_RESPONSE="$api_response" SHOULD_PUSH="$SHOULD_PUSH" ruby -rjson -rdigest <<'RUBY'
+          payload = JSON.parse(File.read(ENV.fetch("API_RESPONSE")))
+          version = ENV.fetch("VERSION")
+
+          abort "RubyGems API returned the wrong gem name" unless payload.fetch("name") == "auto-platform-guide"
+          abort "RubyGems API returned the wrong version" unless payload.fetch("version") == version
+          abort "RubyGems API returned the wrong platform" unless payload.fetch("platform") == "ruby"
+          abort "RubyGems API reports the release as yanked" if payload.fetch("yanked")
+
+          # Only verify SHA when we pushed the gem in this run
+          if ENV.fetch("SHOULD_PUSH") == "true"
+            gem_path = ENV.fetch("GEM_PATH")
+            expected_sha = Digest::SHA256.file(gem_path).hexdigest
+            abort "RubyGems API SHA does not match the built gem" unless payload.fetch("sha") == expected_sha
+          else
+            puts "Gem was already published; skipping SHA verification"
+          end
+          RUBY
+
+  finalize-changelog:
+    needs: publish
+    if: ${{ github.event.release.prerelease == false && needs.publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@003a5c4d8d6321bd302e38f6f0ec593f77f06600
+        with:
+          ruby-version: 4.0.6
+          bundler: none
+
+      - name: Validate main and release tag
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          [[ "$REPOSITORY" == "mauriciozaffari/auto-platform-guide" ]] ||
+            fail "release workflow must run in mauriciozaffari/auto-platform-guide"
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+            fail "release tag must match vX.Y.Z"
+
+          tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          head_sha="$(git rev-parse --verify HEAD)"
+          main_sha="$(git rev-parse --verify "refs/remotes/origin/main^{commit}")"
+
+          [[ "$tag_sha" == "$RELEASE_SHA" ]] ||
+            fail "${RELEASE_TAG} no longer matches the release event SHA"
+          [[ "$head_sha" == "$main_sha" ]] ||
+            fail "checked-out main does not match origin/main"
+
+          if [[ "$main_sha" == "$RELEASE_SHA" ]]; then
+            finalize_state="fresh"
+          else
+            parents="$(git show -s --format=%P "$main_sha")"
+            [[ "$parents" == "$RELEASE_SHA" ]] ||
+              fail "main is not the release commit or its single direct child"
+
+            subject="$(git show -s --format=%s "$main_sha")"
+            expected_subject="docs: finalize ${RELEASE_TAG} changelog"
+            [[ "$subject" == "$expected_subject" ]] ||
+              fail "the commit after the release has an unexpected subject"
+
+            changed_files="$(git diff-tree --no-commit-id --name-only -r "$main_sha")"
+            [[ "$changed_files" == "CHANGELOG.md" ]] ||
+              fail "the commit after the release must change only CHANGELOG.md"
+
+            finalize_state="already-finalized"
+          fi
+
+          version="$(ruby -Ilib -rauto_platform_guide/version -e 'print AutoPlatformGuide::VERSION')"
+          [[ "$RELEASE_TAG" == "v${version}" ]] ||
+            fail "${RELEASE_TAG} does not match AutoPlatformGuide::VERSION ${version}"
+          printf 'FINALIZE_STATE=%s\n' "$finalize_state" >> "$GITHUB_ENV"
+
+      - name: Finalize changelog
+        env:
+          PUBLISHED_AT: ${{ github.event.release.published_at }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          release_date="${PUBLISHED_AT%%T*}"
+          [[ "$release_date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || {
+            echo "::error::release published_at must contain a YYYY-MM-DD date"
+            exit 1
+          }
+
+          bin/update_changelog \
+            --tag "$RELEASE_TAG" \
+            --date "$release_date" \
+            --repository "$REPOSITORY" \
+            CHANGELOG.md
+
+      - name: Commit changelog if changed
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$FINALIZE_STATE" == "already-finalized" ]]; then
+            working_tree="$(git status --porcelain --untracked-files=all)"
+            if [[ -n "$working_tree" ]]; then
+              echo "::error::changelog updater was not idempotent on the finalized commit"
+              exit 1
+            fi
+            echo "CHANGELOG.md is already finalized for ${RELEASE_TAG}"
+            exit 0
+          fi
+
+          [[ "$FINALIZE_STATE" == "fresh" ]] || {
+            echo "::error::unexpected changelog finalization state ${FINALIZE_STATE}"
+            exit 1
+          }
+
+          if git diff --quiet -- CHANGELOG.md; then
+            echo "CHANGELOG.md is already finalized for ${RELEASE_TAG}"
+            exit 0
+          fi
+
+          unexpected_files="$(git diff --name-only -- . ':(exclude)CHANGELOG.md')"
+          [[ -z "$unexpected_files" ]] || {
+            echo "::error::changelog finalization changed unexpected files: ${unexpected_files}"
+            exit 1
+          }
+          git diff --check
+
+          git add -- CHANGELOG.md
+          staged_files="$(git diff --cached --name-only)"
+          [[ "$staged_files" == "CHANGELOG.md" ]] || {
+            echo "::error::only CHANGELOG.md may be committed"
+            exit 1
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: finalize ${RELEASE_TAG} changelog" -- CHANGELOG.md
+
+          tag_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
+          [[ "$tag_sha" == "$RELEASE_SHA" ]] || {
+            echo "::error::release tag changed during changelog finalization"
+            exit 1
+          }
+
+          git push origin HEAD:main

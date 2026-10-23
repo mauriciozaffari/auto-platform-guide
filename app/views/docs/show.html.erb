@@ -1,0 +1,12 @@
+<% content_for :head do %>
+  <%= javascript_include_tag 'docs', 'data-turbo-track': 'reload' %>
+<% end %>
+
+<% breadcrumbs = [link_to('Documentation', docs_path)] + @document.breadcrumbs %>
+<%= content_header link_to('Documentation', docs_path), breadcrumbs: %>
+
+<section class="content documentation">
+  <%= render 'shared/box' do %>
+    <%= @document.render %>
+  <% end %>
+</section>

@@ -1,0 +1,219 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "date"
+require "optparse"
+
+module UpdateChangelog
+  class Error < StandardError; end
+
+  class Updater
+  DATE_PATTERN = /\A\d{4}-\d{2}-\d{2}\z/
+  RELEASE_HEADING_PATTERN = /^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$/
+  VERSION_HEADING_PATTERN = /^## \[\d+\.\d+\.\d+\].*$/
+
+  def initialize(path:, tag:, date:, repository:, check:)
+    @path = path
+    @version = tag.delete_prefix("v")
+    @tag = tag
+    @date = date
+    @repository = repository
+    @check = check
+  end
+
+  def call
+    content = File.binread(path)
+    releases = validate(content)
+    existing_index = releases.index { |release_version, _date| release_version == version }
+    if existing_index
+      validate_existing_target(content, releases, existing_index)
+      return
+    end
+
+    validate_target_version(releases.first.first)
+    updated_content = promote(content, previous_version: releases.first.first)
+    File.binwrite(path, updated_content) unless check
+  end
+
+  private
+
+  attr_reader :path, :version, :tag, :date, :repository, :check
+
+  def validate(content)
+    validate_unreleased_heading(content)
+    validate_release_heading_shapes(content)
+    releases = content.scan(RELEASE_HEADING_PATTERN)
+    raise Error, "expected at least one release heading" if releases.empty?
+
+    validate_release_headings(releases)
+    validate_references(content, releases)
+    releases
+  end
+
+  def validate_unreleased_heading(content)
+    count = content.scan(/^## \[Unreleased\]$/).length
+    return if count == 1
+
+    raise Error, "expected exactly one '## [Unreleased]' heading, found #{count}"
+  end
+
+  def validate_release_heading_shapes(content)
+    malformed = content.scan(VERSION_HEADING_PATTERN).find do |heading|
+      !RELEASE_HEADING_PATTERN.match?(heading)
+    end
+    raise Error, "malformed release heading: #{malformed}" if malformed
+  end
+
+  def validate_release_headings(releases)
+    duplicate = releases.map(&:first).tally.find { |_version, count| count > 1 }
+    raise Error, "duplicate release heading for #{duplicate.first}" if duplicate
+
+    releases.each do |version, release_date|
+      validate_date(release_date, "release #{version} date")
+    end
+
+    releases.each_cons(2) do |(newer_version, _newer_date), (older_version, _older_date)|
+      next if (version_parts(newer_version) <=> version_parts(older_version)) == 1
+
+      raise Error, "release #{older_version} must be older than #{newer_version}"
+    end
+  end
+
+  def validate_references(content, releases)
+    reference_pairs = content.scan(/^\[([^\]]+)\]: (.+)$/)
+    duplicate = reference_pairs.map(&:first).tally.find { |_label, count| count > 1 }
+    raise Error, "duplicate [#{duplicate.first}] reference" if duplicate
+
+    references = reference_pairs.to_h
+    expected_references(releases).each do |label, expected|
+      actual = references[label]
+      next if actual == expected
+
+      raise Error, "noncanonical [#{label}] reference: expected #{expected}"
+    end
+  end
+
+  def expected_references(releases)
+    references = { "Unreleased" => compare_url("v#{releases.first.first}", "HEAD") }
+    releases.each_with_index do |(release_version, _release_date), index|
+      older_release = releases[index + 1]
+      references[release_version] = if older_release
+                                      compare_url("v#{older_release.first}", "v#{release_version}")
+                                    else
+                                      release_url("v#{release_version}")
+                                    end
+    end
+    references
+  end
+
+  def validate_target_version(previous_version)
+    return if (version_parts(version) <=> version_parts(previous_version)) == 1
+
+    raise Error, "target version #{version} must be newer than #{previous_version}"
+  end
+
+  def validate_existing_target(content, releases, existing_index)
+    newest_version = releases.first.first
+    unless existing_index.zero?
+      raise Error, "existing target #{version} is not the newest release (#{newest_version})"
+    end
+
+    unreleased_heading = content.match(/^## \[Unreleased\]$\n/)
+    target_heading = content.match(RELEASE_HEADING_PATTERN, unreleased_heading.end(0))
+    body = content[unreleased_heading.end(0)...target_heading.begin(0)]
+    return if body.strip.empty?
+
+    raise Error, "Unreleased section must be blank when target #{version} already exists"
+  end
+
+  def version_parts(value)
+    value.split(".").map(&:to_i)
+  end
+
+  def promote(content, previous_version:)
+    unreleased_heading = content.match(/^## \[Unreleased\]$\n/)
+    next_release = content.match(RELEASE_HEADING_PATTERN, unreleased_heading.end(0))
+    body = content[unreleased_heading.end(0)...next_release.begin(0)]
+    raise Error, "Unreleased section is blank" if body.strip.empty?
+
+    content = content.dup.insert(unreleased_heading.end(0), "\n## [#{version}] - #{date}\n")
+    old_reference = /^\[Unreleased\]: .+$/
+    new_references = "[Unreleased]: #{compare_url(tag, 'HEAD')}\n" \
+                     "[#{version}]: #{compare_url("v#{previous_version}", tag)}"
+    content.sub(old_reference, new_references)
+  end
+
+  def compare_url(from, to)
+    "https://github.com/#{repository}/compare/#{from}...#{to}"
+  end
+
+  def release_url(release_tag)
+    "https://github.com/#{repository}/releases/tag/#{release_tag}"
+  end
+
+  def validate_date(value, label)
+    raise Date::Error unless DATE_PATTERN.match?(value)
+
+    Date.iso8601(value)
+  rescue Date::Error
+    raise Error, "#{label} must be a valid YYYY-MM-DD date"
+  end
+end
+
+class CLI
+  TAG_PATTERN = /\Av\d+\.\d+\.\d+\z/
+  REPOSITORY_PATTERN = %r{\A[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\z}
+
+  def self.run(arguments)
+    options = parse(arguments)
+    validate_options(options)
+    Updater.new(**options).call
+    0
+  rescue OptionParser::ParseError, Error, SystemCallError => error
+    warn "update_changelog: #{error.message}"
+    1
+  end
+
+  def self.parse(arguments)
+    options = { check: false }
+    parser = OptionParser.new do |opts|
+      opts.on("--tag TAG") { |tag| options[:tag] = tag }
+      opts.on("--date DATE") { |date| options[:date] = date }
+      opts.on("--repository REPOSITORY") { |repository| options[:repository] = repository }
+      opts.on("--check") { options[:check] = true }
+    end
+    paths = parser.parse(arguments)
+    raise Error, "missing argument: CHANGELOG.md" if paths.empty?
+    raise Error, "expected exactly one CHANGELOG.md path" if paths.length > 1
+
+    options.merge(path: paths.first)
+  end
+
+  def self.validate_options(options)
+    %i[tag date repository].each do |name|
+      raise Error, "missing required option: --#{name}" unless options[name]
+    end
+
+    raise Error, "--tag must match vX.Y.Z" unless TAG_PATTERN.match?(options[:tag])
+
+    validate_date_option(options[:date])
+    unless REPOSITORY_PATTERN.match?(options[:repository])
+      raise Error, "--repository must match owner/repository"
+    end
+    raise Error, "changelog does not exist: #{options[:path]}" unless File.file?(options[:path])
+  end
+
+  def self.validate_date_option(value)
+    raise Date::Error unless Updater::DATE_PATTERN.match?(value)
+
+    Date.iso8601(value)
+  rescue Date::Error
+    raise Error, "--date must be a valid YYYY-MM-DD date"
+  end
+
+  private_class_method :parse, :validate_options, :validate_date_option
+end
+
+end
+
+exit UpdateChangelog::CLI.run(ARGV) if $PROGRAM_NAME == __FILE__

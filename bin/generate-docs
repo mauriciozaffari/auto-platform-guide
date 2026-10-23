@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require 'auto_platform_guide'
+
+# Usage:
+#   bin/generate-docs                    # Generate docs for all system specs with doc comments
+#   bin/generate-docs spec/path/to/file  # Generate docs for a specific spec file
+#   bin/generate-docs --check            # Verify committed docs match their specs (no spec run); exit 1 if stale
+#   bin/generate-docs --readme-only      # Rebuild only the README table of contents
+#   bin/generate-docs --render-only      # Re-render from comments, reusing screenshots on disk
+
+exit(AutoPlatformGuide::Generator.run(ARGV))

@@ -1,0 +1,34 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+
+def run_step(name, command)
+  puts "\n" + "=" * 60
+  puts "Running: #{name}"
+  puts "=" * 60
+
+  system(command)
+  exit_code = $?.exitstatus
+
+  if exit_code.zero?
+    puts "✓ #{name} passed"
+  else
+    puts "✗ #{name} failed (exit code: #{exit_code})"
+    exit exit_code
+  end
+end
+
+puts "\n" + "=" * 60
+puts "Auto Platform Guide Gem CI Pipeline"
+puts "=" * 60
+
+run_step("RSpec", "COVERAGE=1 bundle exec rspec")
+run_step("RuboCop", "bundle exec rubocop")
+run_step("Reek", "bundle exec reek lib")
+run_step("Flay", "bundle exec flay --mass 150 lib")
+run_step("Bundler Audit", "bundle exec bundler-audit")
+
+puts "\n" + "=" * 60
+puts "✓ All CI checks passed"
+puts "=" * 60
