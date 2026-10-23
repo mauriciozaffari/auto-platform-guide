@@ -1,0 +1,86 @@
+<!--
+Generated: 2026-10-23 02:00:12 UTC
+-->
+
+<h1 id="markdown-rendering">Markdown rendering</h1>
+
+Redcarpet parses and Rouge highlights. Fenced code, tables, autolinks and
+strikethrough are enabled, and a light Obsidian layer adds wikilinks and
+callouts on top.
+
+
+<h2 id="code">Code</h2>
+
+
+```ruby
+AutoPlatformGuide.configure do |config|
+  config.generated_docs_dir = 'docs/platform-guide'
+end
+```
+
+```javascript
+document.addEventListener('turbo:load', renderDiagrams)
+```
+
+```yaml
+auto_platform_guide:
+  docs_root: docs
+  specs_glob: spec/system/**/*_spec.rb
+```
+
+
+<h2 id="mermaid">Mermaid</h2>
+
+
+```mermaid
+sequenceDiagram
+    participant Spec
+    participant Generator
+    participant Viewer
+    Spec->>Generator: doc comments
+    Generator->>Viewer: markdown
+    Viewer->>Spec: /docs
+```
+
+Mermaid blocks become `<pre class="mermaid">` and are never syntax-highlighted.
+A global `mermaid` object renders them in the viewer; without one the source
+stays readable.
+
+
+<h2 id="callouts">Callouts</h2>
+
+
+> [!NOTE]
+> Neutral context.
+
+> [!TIP]
+> A shortcut.
+
+> [!IMPORTANT]
+> Something that matters.
+
+> [!WARNING]
+> Something that can break.
+
+> [!CAUTION]
+> Something destructive.
+
+
+<h2 id="tables">Tables</h2>
+
+
+| Feature | Value |
+| --- | --- |
+| Parser | Redcarpet |
+| Highlighter | Rouge |
+| Diagrams | Mermaid |
+
+
+<h2 id="links">Links</h2>
+
+
+`[[OVERVIEW]]` links to the generated overview and
+`[[OVERVIEW|the overview]]` renames the label. Inline code that contains a
+wikilink is left untouched.
+
+See [[OVERVIEW]] for installation and configuration.

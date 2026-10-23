@@ -20,12 +20,12 @@ module AutoPlatformGuide
     README_PREAMBLE = <<~MARKDOWN
       <h1 id="platform-guide">Platform Guide</h1>
 
-      This guide is the primary, automatically generated reference for operating the
-      platform. It is extracted from the admin system specs, so every page reflects the
+      This guide is the primary, automatically generated reference for this
+      application. It is extracted from documented specs, so every page reflects
       behaviour that is actually tested in the codebase.
 
-      Guides are grouped by area below and ordered to follow a typical admin workflow —
-      from the first admin area through to the last.
+      Guides are grouped by area below and ordered to follow a typical workflow, from
+      the first area through to the last.
     MARKDOWN
 
     # Returns a process exit status (0 ok, 1 stale in --check mode).
@@ -233,7 +233,7 @@ module AutoPlatformGuide
         f.puts '-->'
         f.puts
 
-        f.write(README_PREAMBLE)
+        f.write(config.readme_preamble || README_PREAMBLE)
 
         # Build the TOC from every documented spec (not just the ones regenerated
         # in this run) so running for a subset of specs doesn't drop other

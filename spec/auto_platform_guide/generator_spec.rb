@@ -28,7 +28,8 @@ RSpec.describe AutoPlatformGuide::Generator do
           old_values = {
             generated_docs_dir: config.generated_docs_dir,
             screenshots_dir: config.screenshots_dir,
-            specs_glob: config.specs_glob
+            specs_glob: config.specs_glob,
+            readme_preamble: config.readme_preamble
           }
           config.generated_docs_dir = 'guides'
           config.screenshots_dir = 'shots'
@@ -108,6 +109,13 @@ RSpec.describe AutoPlatformGuide::Generator do
       FileUtils.mkdir_p('guides')
       expect(described_class.run(['--readme-only'])).to eq(0)
       expect(File.read('guides/README.md')).to include('<h1 id="platform-guide">Platform Guide</h1>')
+    end
+
+    it 'uses the configured readme preamble' do
+      AutoPlatformGuide.configuration.readme_preamble = %(<h1 id="platform-guide">Gem Guide</h1>\n)
+      FileUtils.mkdir_p('guides')
+      described_class.run(['--readme-only'])
+      expect(File.read('guides/README.md')).to include('Gem Guide')
     end
 
     it 'runs the spec file through the shell when run_specs is true' do

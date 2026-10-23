@@ -12,11 +12,22 @@ and this project adheres to
 
 - Rake tasks for generating, checking, re-rendering and rebuilding the TOC,
   shipped with the gem.
+- `readme_preamble` configuration for the markdown above the generated README
+  table of contents.
+- The gem's own guide in `docs/platform-guide/`, generated from `spec/docs/` and
+  verified in CI.
 
 ### Changed
 
 - The docs viewer template no longer depends on host helpers, partials or
   assets (`content_header`, `shared/_box`, `docs_path`, `docs.js`).
+
+### Fixed
+
+- Doc comments preserve indentation beyond the `# ` prefix, so fenced code
+  blocks keep their layout.
+- Adjacent callout blockquotes render as separate callouts instead of one merged
+  quote.
 
 ### Removed
 

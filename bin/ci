@@ -24,6 +24,7 @@ puts "Auto Platform Guide Gem CI Pipeline"
 puts "=" * 60
 
 run_step("RSpec", "COVERAGE=1 bundle exec rspec")
+run_step("Docs check", "bundle exec rake auto_platform_guide:check")
 run_step("RuboCop", "bundle exec rubocop")
 run_step("Reek", "bundle exec reek lib")
 run_step("Flay", "bundle exec flay --mass 150 lib")

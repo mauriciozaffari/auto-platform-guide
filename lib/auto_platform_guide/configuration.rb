@@ -14,6 +14,9 @@ module AutoPlatformGuide
     # Browser driver used when a system spec needs a real browser:
     # :playwright (default) or :selenium.
     attr_accessor :browser_driver
+    # Markdown written above the generated README table of contents. Defaults to
+    # Generator::README_PREAMBLE when nil.
+    attr_accessor :readme_preamble
 
     def initialize
       @docs_root = 'docs'
@@ -21,6 +24,7 @@ module AutoPlatformGuide
       @screenshots_dir = 'docs/screenshots'
       @specs_glob = 'spec/system/**/*_spec.rb'
       @browser_driver = :playwright
+      @readme_preamble = nil
     end
   end
 

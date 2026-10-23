@@ -294,6 +294,13 @@ RSpec.describe AutoPlatformGuide::Document do
         end
       end
 
+      it 'renders adjacent callouts as separate callouts' do
+        html = render_markdown("> [!NOTE]\n> One.\n\n> [!TIP]\n> Two.\n")
+
+        expect(html.scan('class="callout callout-').size).to eq(2)
+        expect(html).not_to include('[!TIP]')
+      end
+
       it 'keeps regular blockquotes unchanged' do
         # Whitespace inside the quote depends on the host's sanitizer vendor
         # (HTML5 under Rails load_defaults, HTML4 standalone): assert fragments.

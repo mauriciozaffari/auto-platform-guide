@@ -2,6 +2,9 @@
 
 Generate in-app documentation from system specs.
 
+The gem documents itself: `docs/platform-guide/` is generated from
+`spec/docs/` by `rake auto_platform_guide:render` and checked in CI.
+
 - `AutoPlatformGuide::Generator` renders markdown guides from `# =` doc comments in
   system specs into `generated_docs_dir`, with an ordered README TOC grouped by
   `@category`/`@order` directives.
@@ -56,8 +59,9 @@ end
 
 The `:playwright` default needs `capybara-playwright-driver` in the host app;
 `:selenium` needs `selenium-webdriver`. `capybara` itself is a gem dependency.
-Note: `:selenium` support is unit-tested with mocked drivers — no CI job boots a
-real browser under either driver.
+`readme_preamble` replaces the markdown above the generated README table of
+contents. Note: `:selenium` support is unit-tested with mocked drivers — no CI
+job boots a real browser under either driver.
 
 ```ruby
 # spec/rails_helper.rb
@@ -104,8 +108,9 @@ end
   non-comment line. Sections can also sit directly above the examples they describe.
 - `@category` and `@order` only place the guide in the README TOC; they are
   stripped from the body. Specs without them fall under `Other` / `999_999`.
-- The generator never runs the spec: it parses comments and links only
-  screenshots whose PNG already exists on disk.
+- The generator parses comments and embeds only screenshots whose PNG already
+  exists on disk. `generate` runs the spec first to capture them; `render` and
+  `check` never run specs.
 
 `doc_screenshot('orders/created')` writes `docs/screenshots/orders/created.png`
 when screenshots are enabled, and does nothing otherwise.

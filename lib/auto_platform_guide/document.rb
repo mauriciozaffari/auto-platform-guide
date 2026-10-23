@@ -34,6 +34,10 @@ module AutoPlatformGuide
         'caution' => 'ban'
       }.freeze
 
+      # Redcarpet merges adjacent blockquotes into one callback, so split the
+      # quote at each callout marker and render them separately.
+      CALLOUT_SPLIT = /(?=<p>\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\])/i
+
       def self.render(path, base_dir: nil)
         new(base_dir:).render(path)
       end
@@ -88,21 +92,22 @@ module AutoPlatformGuide
       end
 
       def block_quote(quote)
-        callout = quote.match(CALLOUT)
-
-        if callout
-          type = callout[1].downcase
-          quote = quote.sub(CALLOUT, '<p>')
-          icon = tag.i(class: "fa fa-#{CALLOUT_ICONS.fetch(type)}", aria: { hidden: true })
-          callout_title = %(<p class="callout-title">#{icon} #{type.titleize}</p>)
-
-          %(<blockquote class="callout callout-#{type}">#{callout_title}\n#{quote}</blockquote>)
-        else
-          %(<blockquote>#{quote}</blockquote>)
-        end
+        quote.split(CALLOUT_SPLIT).reject(&:empty?).map { |segment| render_quote(segment) }.join("\n")
       end
 
       private
+
+      def render_quote(segment)
+        callout = segment.match(CALLOUT)
+        return %(<blockquote>#{segment}</blockquote>) unless callout
+
+        type = callout[1].downcase
+        body = segment.sub(CALLOUT, '<p>')
+        icon = tag.i(class: "fa fa-#{CALLOUT_ICONS.fetch(type)}", aria: { hidden: true })
+        title = %(<p class="callout-title">#{icon} #{type.titleize}</p>)
+
+        %(<blockquote class="callout callout-#{type}">#{title}\n#{body}</blockquote>)
+      end
 
       def replace_wikilinks(document)
         in_fence = false

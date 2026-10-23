@@ -53,6 +53,11 @@ RSpec.describe AutoPlatformGuide::SpecFile do
     expect(comments.first[:content]).to eq(['How to manage settings.'])
   end
 
+  it 'preserves indentation beyond the comment prefix' do
+    File.write(path, "# = Code\n# ```ruby\n#   indented\n# ```\n")
+    expect(spec_file.doc_comments.first[:content]).to eq(['```ruby', '  indented', '```'])
+  end
+
   it 'strips directive lines from the comment stream' do
     expect(spec_file.doc_comments.first[:content]).not_to include(a_string_matching(/@category/))
   end

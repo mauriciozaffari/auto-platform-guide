@@ -8,7 +8,9 @@ module AutoPlatformGuide
   class SpecFile
     # One `=` per heading level: `# = Title`, `# == Sub-title`.
     HEADING = /^\s*#\s*(=+)\s*(.+?)\s*$/
-    COMMENT = /^\s*#\s*(.*?)\s*$/
+    # Exactly one space after `#` is the comment prefix; anything beyond it is
+    # content, so indented code inside fenced blocks survives.
+    COMMENT = /^\s*#\s?(.*?)\s*$/
 
     # `@category` / `@order` control TOC placement only and are stripped from the
     # body. `@order` is global across guides and categories sort by their
