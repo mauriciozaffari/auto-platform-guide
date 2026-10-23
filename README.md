@@ -66,6 +66,63 @@ RSpec.configure do |config|
 end
 ```
 
+## Writing a documented spec
+
+Doc comments are parsed from the files matched by `specs_glob`. A spec file is
+picked up when it has a `# = Heading` at column 0.
+
+```ruby
+# spec/system/orders_spec.rb
+require 'rails_helper'
+
+# @category Orders
+# @order 200
+#
+# = Orders
+# Create and track customer orders.
+#
+# == Creating an order
+# Pick a customer, add line items and save.
+
+RSpec.describe 'Orders', type: :system do
+  it 'creates an order' do
+    visit new_admin_order_path
+
+    fill_in 'Reference', with: 'ORD-1'
+    click_button 'Save'
+    expect(page).to have_content('Order created')
+
+    doc_screenshot('orders/created')
+  end
+end
+```
+
+- `# = Heading` renders as `<h1>`; every extra `=` adds a level (`# ==` → `<h2>`).
+- Comment lines after a heading are its body, up to the next heading or the first
+  non-comment line. Sections can also sit directly above the examples they describe.
+- `@category` and `@order` only place the guide in the README TOC; they are
+  stripped from the body. Specs without them fall under `Other` / `999_999`.
+- The generator never runs the spec: it parses comments and links only
+  screenshots whose PNG already exists on disk.
+
+`doc_screenshot('orders/created')` writes `docs/screenshots/orders/created.png`
+when screenshots are enabled, and does nothing otherwise.
+
+## Capturing screenshots
+
+```bash
+SCREENSHOTS=true bundle exec rspec spec/system/orders_spec.rb
+rake auto_platform_guide:generate
+```
+
+`SCREENSHOTS=true` drives every system example in that run through the configured
+browser (`:playwright` by default) and saves each `doc_screenshot` call. Without
+it, system specs use `rack_test`; tag individual examples `:js` when only they
+need a browser.
+
+The helper is included for `type: :system` only, so keep that metadata. A
+screenshot is rendered after the heading block that precedes its call.
+
 ## Rake tasks
 
 Generating docs is a rake task shipped with the gem. Rails apps load it through
