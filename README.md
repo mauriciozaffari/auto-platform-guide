@@ -25,9 +25,11 @@ Generate in-app documentation from system specs.
   get '/docs(/*id)', to: 'docs#show', as: 'docs'
   ```
 
-  The shipped `docs/show` template expects host-provided pieces: a
-  `content_header` helper, a `shared/_box` partial, `docs_path`, and a `docs`
-  JavaScript asset.
+  The shipped `docs/show` template uses plain markup and inline JavaScript; it
+  needs no host helpers, partials or assets. It links to `/docs`, so mount the
+  route there. Mermaid fenced blocks render when a global `mermaid` is present
+  and stay readable as source otherwise. Override the template in the host app
+  to change the surrounding chrome.
 
 ## Installation
 

@@ -1,12 +1,46 @@
-<% content_for :head do %>
-  <%= javascript_include_tag 'docs', 'data-turbo-track': 'reload' %>
-<% end %>
+<% content_for :title, @document.title %>
 
-<% breadcrumbs = [link_to('Documentation', docs_path)] + @document.breadcrumbs %>
-<%= content_header link_to('Documentation', docs_path), breadcrumbs: %>
+<section class="content-header">
+  <h1><%= @document.title %></h1>
+
+  <ol class="breadcrumb">
+    <li><%= link_to 'Documentation', '/docs' %></li>
+    <% @document.breadcrumbs.each do |crumb| %>
+      <li><%= link_to crumb[:name], crumb[:path] %></li>
+    <% end %>
+  </ol>
+</section>
 
 <section class="content documentation">
-  <%= render 'shared/box' do %>
-    <%= @document.render %>
-  <% end %>
+  <div class="box">
+    <div class="box-body">
+      <%= @document.render %>
+    </div>
+  </div>
 </section>
+
+<%# Mermaid diagrams are an enhancement: without a global `mermaid`, the
+    renderer's <pre class="mermaid"> blocks stay visible as source. %>
+<%= javascript_tag nonce: true do %>
+  (() => {
+    if (window.autoPlatformGuideDocsReady) return
+    window.autoPlatformGuideDocsReady = true
+
+    const renderDiagrams = () => {
+      if (!window.mermaid) return
+
+      const nodes = document.querySelectorAll('pre.mermaid:not([data-processed="true"])')
+      if (!nodes.length) return
+
+      window.mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+        theme: window.darkMode ? 'dark' : 'default'
+      })
+      window.mermaid.run({ nodes })
+    }
+
+    document.addEventListener('turbo:load', renderDiagrams)
+    if (document.readyState === 'complete') renderDiagrams()
+  })()
+<% end %>

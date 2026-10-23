@@ -13,6 +13,11 @@ and this project adheres to
 - Rake tasks for generating, checking, re-rendering and rebuilding the TOC,
   shipped with the gem.
 
+### Changed
+
+- The docs viewer template no longer depends on host helpers, partials or
+  assets (`content_header`, `shared/_box`, `docs_path`, `docs.js`).
+
 ### Removed
 
 - `bin/generate-docs`; use `auto_platform_guide:generate` instead.
