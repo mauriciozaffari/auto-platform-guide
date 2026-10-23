@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-23 02:03:38 UTC
+Generated: 2026-10-23 02:16:30 UTC
 -->
 
 <h1 id="markdown-rendering">Markdown rendering</h1>
@@ -79,8 +79,9 @@ stays readable.
 <h2 id="links">Links</h2>
 
 
-`[[OVERVIEW]]` links to the generated overview and
-`[[OVERVIEW|the overview]]` renames the label. Inline code that contains a
-wikilink is left untouched.
+Standard markdown links work everywhere: [the overview](OVERVIEW.md) resolves
+in the viewer and on GitHub.
 
-See [[OVERVIEW]] for installation and configuration.
+The viewer also converts Obsidian-style wikilinks such as
+`[[OVERVIEW|the overview]]`, but other markdown readers, GitHub included, show
+them literally.

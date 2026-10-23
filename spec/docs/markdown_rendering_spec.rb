@@ -69,8 +69,9 @@
 #
 # == Links
 #
-# `[[OVERVIEW]]` links to the generated overview and
-# `[[OVERVIEW|the overview]]` renames the label. Inline code that contains a
-# wikilink is left untouched.
+# Standard markdown links work everywhere: [the overview](OVERVIEW.md) resolves
+# in the viewer and on GitHub.
 #
-# See [[OVERVIEW]] for installation and configuration.
+# The viewer also converts Obsidian-style wikilinks such as
+# `[[OVERVIEW|the overview]]`, but other markdown readers, GitHub included, show
+# them literally.

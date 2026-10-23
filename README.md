@@ -55,14 +55,20 @@ AutoPlatformGuide.configure do |config|
   config.screenshots_dir = 'docs/screenshots'
   config.specs_glob = 'spec/system/**/*_spec.rb'
   config.browser_driver = :playwright # or :selenium
+  config.readme_preamble = nil
 end
 ```
 
+Every key is optional; the values above are the defaults. Keep
+`generated_docs_dir` inside `docs_root`, since the viewer only reads from
+`docs_root`.
+
 The `:playwright` default needs `capybara-playwright-driver` in the host app;
 `:selenium` needs `selenium-webdriver`. `capybara` itself is a gem dependency.
-`readme_preamble` replaces the markdown above the generated README table of
-contents. Note: `:selenium` support is unit-tested with mocked drivers — no CI
-job boots a real browser under either driver.
+`readme_preamble` is markdown placed above the generated README's table of
+contents; `nil` keeps `AutoPlatformGuide::Generator::README_PREAMBLE`. Note:
+`:selenium` support is unit-tested with mocked drivers — no CI job boots a real
+browser under either driver.
 
 ```ruby
 # spec/rails_helper.rb

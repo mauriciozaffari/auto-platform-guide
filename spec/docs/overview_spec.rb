@@ -4,7 +4,7 @@
 # @order 100
 #
 # = Auto Platform Guide
-# Turn documented system specs into an in-app guide served at `/docs`.
+# Turn documented system specs into an in-app guide served at `docs_path`.
 #
 # == How it fits together
 #
@@ -30,7 +30,17 @@
 #
 # == Configure
 #
-# Defaults shown; every key is optional.
+# Every setting is optional.
+#
+# | Setting | Default | Purpose |
+# | --- | --- | --- |
+# | `docs_root` | `'docs'` | Root the viewer reads markdown from |
+# | `docs_path` | `'/docs'` | URL prefix for links, breadcrumbs and wikilinks |
+# | `generated_docs_dir` | `'docs/platform-guide'` | Where the generator writes guides |
+# | `screenshots_dir` | `'docs/screenshots'` | Where `doc_screenshot` saves PNGs |
+# | `specs_glob` | `'spec/system/**/*_spec.rb'` | Files scanned for doc comments |
+# | `browser_driver` | `:playwright` | Driver for specs that need a browser |
+# | `readme_preamble` | `nil` | Markdown above the README TOC; `nil` keeps the default |
 #
 # ```ruby
 # # config/initializers/auto_platform_guide.rb
@@ -40,14 +50,13 @@
 #   config.generated_docs_dir = 'docs/platform-guide'
 #   config.screenshots_dir = 'docs/screenshots'
 #   config.specs_glob = 'spec/system/**/*_spec.rb'
-#   config.browser_driver = :playwright
+#   config.browser_driver = :playwright # or :selenium
 #   config.readme_preamble = nil
 # end
 # ```
 #
-# `docs_path` is the URL prefix the viewer links to; it must match the route.
-# `readme_preamble` replaces the markdown above the generated README's table of
-# contents.
+# The default preamble is `AutoPlatformGuide::Generator::README_PREAMBLE`. Set
+# `readme_preamble` to your own markdown to replace it.
 #
 # > [!NOTE]
 # > `docs_root` is what `Document` reads; `generated_docs_dir` is where the

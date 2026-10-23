@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-23 02:03:38 UTC
+Generated: 2026-10-23 02:16:30 UTC
 -->
 
 <h1 id="documenting-specs">Documenting specs</h1>
