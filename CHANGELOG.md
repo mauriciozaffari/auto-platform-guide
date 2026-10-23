@@ -19,8 +19,10 @@ and this project adheres to
 
 ### Changed
 
+- Viewer links, breadcrumbs and wikilinks follow the `docs_path` configuration
+  instead of hardcoding `/docs`.
 - The docs viewer template no longer depends on host helpers, partials or
-  assets (`content_header`, `shared/_box`, `docs_path`, `docs.js`).
+  assets (`content_header`, `shared/_box`, a host `docs_path` helper, `docs.js`).
 
 ### Fixed
 

@@ -20,6 +20,14 @@ RSpec.describe AutoPlatformGuide::Document do
     rails_stub.root = root
   end
 
+  def configure_docs_path(value)
+    original = AutoPlatformGuide.configuration.docs_path
+    AutoPlatformGuide.configuration.docs_path = value
+    yield
+  ensure
+    AutoPlatformGuide.configuration.docs_path = original
+  end
+
   describe '.where' do
     let(:create_report_path) { root.join('docs/how-to/CREATE-REPORT.md') }
     let(:delete_report_path) { root.join('docs/how-to/DELETE-REPORT.md') }
@@ -108,6 +116,18 @@ RSpec.describe AutoPlatformGuide::Document do
     end
   end
 
+  describe '.docs_path' do
+    it 'defaults to /docs' do
+      expect(described_class.docs_path).to eq('/docs')
+    end
+
+    it 'strips a trailing slash from the configured path' do
+      configure_docs_path('/handbook/') do
+        expect(described_class.docs_path).to eq('/handbook')
+      end
+    end
+  end
+
   describe '#initialize' do
     let(:path) { root.join('docs/how-to/CREATE-REPORT.md') }
 
@@ -162,6 +182,12 @@ RSpec.describe AutoPlatformGuide::Document do
                                   { name: 'How To', path: '/docs/how-to' },
                                   { name: 'Create Report', path: '/docs/how-to/CREATE-REPORT' }
                                 ])
+    end
+
+    it 'uses the configured docs path' do
+      configure_docs_path('/handbook') do
+        expect(breadcrumbs.last[:path]).to eq('/handbook/how-to/CREATE-REPORT')
+      end
     end
 
     context 'with deeper nesting' do
@@ -318,6 +344,13 @@ RSpec.describe AutoPlatformGuide::Document do
       it 'links [[Note]] to a sibling note in the same folder' do
         expect(render_markdown('See [[Team]].'))
           .to include('<a href="/docs/notes/Team">Team</a>')
+      end
+
+      it 'uses the configured docs path' do
+        configure_docs_path('/handbook') do
+          expect(render_markdown('See [[Team]].'))
+            .to include('<a href="/handbook/notes/Team">Team</a>')
+        end
       end
 
       it 'url-encodes spaces in note names' do

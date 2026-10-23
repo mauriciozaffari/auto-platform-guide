@@ -42,8 +42,9 @@ module AutoPlatformGuide
         new(base_dir:).render(path)
       end
 
-      def initialize(base_dir: nil, **options)
+      def initialize(base_dir: nil, docs_path: nil, **options)
         @base_dir = base_dir
+        @docs_path = (docs_path || Document.docs_path).chomp('/')
         super(options.merge(with_toc_data: true, hard_wrap: true))
       end
 
@@ -151,7 +152,7 @@ module AutoPlatformGuide
 
       def wikilink_url(name, heading)
         segments = [@base_dir, name].compact_blank
-        url = "/docs/#{segments.map { |segment| ERB::Util.url_encode(segment) }.join('/')}"
+        url = "#{@docs_path}/#{segments.map { |segment| ERB::Util.url_encode(segment) }.join('/')}"
         url += "##{heading_anchor(heading)}" if heading
         url
       end
@@ -184,6 +185,10 @@ module AutoPlatformGuide
       def docs_root
         AutoPlatformGuide.configuration.docs_root
       end
+
+      def docs_path
+        AutoPlatformGuide.configuration.docs_path
+      end
     end
 
     def initialize(path)
@@ -206,7 +211,9 @@ module AutoPlatformGuide
     def breadcrumbs
       parts = id.split('/')
 
-      parts.each_with_index.map { |part, i| { name: part.titleize, path: "/docs/#{parts[0..i].join('/')}" } }
+      parts.each_with_index.map do |part, i|
+        { name: part.titleize, path: "#{self.class.docs_path}/#{parts[0..i].join('/')}" }
+      end
     end
   end
 end

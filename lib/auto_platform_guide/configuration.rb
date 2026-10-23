@@ -17,6 +17,9 @@ module AutoPlatformGuide
     # Markdown written above the generated README table of contents. Defaults to
     # Generator::README_PREAMBLE when nil.
     attr_accessor :readme_preamble
+    # URL prefix where the docs viewer is mounted. Links, breadcrumbs and
+    # wikilinks are built from it, so it must match the host's route.
+    attr_reader :docs_path
 
     def initialize
       @docs_root = 'docs'
@@ -25,6 +28,11 @@ module AutoPlatformGuide
       @specs_glob = 'spec/system/**/*_spec.rb'
       @browser_driver = :playwright
       @readme_preamble = nil
+      @docs_path = '/docs'
+    end
+
+    def docs_path=(path)
+      @docs_path = path.chomp('/')
     end
   end
 

@@ -36,6 +36,7 @@
 # # config/initializers/auto_platform_guide.rb
 # AutoPlatformGuide.configure do |config|
 #   config.docs_root = 'docs'
+#   config.docs_path = '/docs'
 #   config.generated_docs_dir = 'docs/platform-guide'
 #   config.screenshots_dir = 'docs/screenshots'
 #   config.specs_glob = 'spec/system/**/*_spec.rb'
@@ -44,6 +45,7 @@
 # end
 # ```
 #
+# `docs_path` is the URL prefix the viewer links to; it must match the route.
 # `readme_preamble` replaces the markdown above the generated README's table of
 # contents.
 #

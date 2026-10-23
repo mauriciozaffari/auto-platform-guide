@@ -4,7 +4,7 @@
   <h1><%= @document.title %></h1>
 
   <ol class="breadcrumb">
-    <li><%= link_to 'Documentation', '/docs' %></li>
+    <li><%= link_to 'Documentation', AutoPlatformGuide::Document.docs_path %></li>
     <% @document.breadcrumbs.each do |crumb| %>
       <li><%= link_to crumb[:name], crumb[:path] %></li>
     <% end %>

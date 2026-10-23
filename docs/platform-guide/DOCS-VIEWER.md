@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-23 02:00:12 UTC
+Generated: 2026-10-23 02:03:38 UTC
 -->
 
 <h1 id="docs-viewer">Docs viewer</h1>
@@ -34,5 +34,6 @@ extension. Without a name it resolves a folder index (`README` or
 `00 - Index`) and raises `Document::RecordNotFound` when nothing matches.
 
 > [!IMPORTANT]
-> The template links to `/docs`; mount the route at that path. Override
-> `app/views/docs/show.html.erb` in the host app to change the chrome.
+> Links are built from `docs_path` (default `/docs`); set it to the path you
+> mount. Override `app/views/docs/show.html.erb` in the host app to change the
+> chrome.

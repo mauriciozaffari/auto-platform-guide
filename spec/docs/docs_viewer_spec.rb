@@ -30,5 +30,6 @@
 # `00 - Index`) and raises `Document::RecordNotFound` when nothing matches.
 #
 # > [!IMPORTANT]
-# > The template links to `/docs`; mount the route at that path. Override
-# > `app/views/docs/show.html.erb` in the host app to change the chrome.
+# > Links are built from `docs_path` (default `/docs`); set it to the path you
+# > mount. Override `app/views/docs/show.html.erb` in the host app to change the
+# > chrome.

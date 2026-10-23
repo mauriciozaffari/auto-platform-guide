@@ -34,5 +34,13 @@ RSpec.describe AutoPlatformGuide::Document do
     it 'does not escape the rendered markdown' do
       expect(html).not_to include('&lt;h1&gt;')
     end
+
+    it 'links to the configured docs path' do
+      original = AutoPlatformGuide.configuration.docs_path
+      AutoPlatformGuide.configuration.docs_path = '/handbook'
+      expect(html).to include('href="/handbook"')
+    ensure
+      AutoPlatformGuide.configuration.docs_path = original
+    end
   end
 end

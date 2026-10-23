@@ -29,10 +29,10 @@ The gem documents itself: `docs/platform-guide/` is generated from
   ```
 
   The shipped `docs/show` template uses plain markup and inline JavaScript; it
-  needs no host helpers, partials or assets. It links to `/docs`, so mount the
-  route there. Mermaid fenced blocks render when a global `mermaid` is present
-  and stay readable as source otherwise. Override the template in the host app
-  to change the surrounding chrome.
+  needs no host helpers, partials or assets. Links are built from `docs_path`, so
+  set it to the path you mount (default `/docs`). Mermaid fenced blocks render
+  when a global `mermaid` is present and stay readable as source otherwise.
+  Override the template in the host app to change the surrounding chrome.
 
 ## Installation
 
@@ -50,6 +50,7 @@ release is cut.
 # config/initializers/auto_platform_guide.rb
 AutoPlatformGuide.configure do |config|
   config.docs_root = 'docs'
+  config.docs_path = '/docs'
   config.generated_docs_dir = 'docs/platform-guide'
   config.screenshots_dir = 'docs/screenshots'
   config.specs_glob = 'spec/system/**/*_spec.rb'
