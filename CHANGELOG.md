@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-26
+
+Initial release: spec-driven doc generator, `doc_screenshot` helper, configurable
+browser driver wiring, and markdown docs viewer.
+
 ### Added
 
 - Rake tasks for generating, checking, re-rendering and rebuilding the TOC,
@@ -34,11 +39,6 @@ and this project adheres to
 ### Removed
 
 - `bin/generate-docs`; use `auto_platform_guide:generate` instead.
-
-## [0.1.0] - 2026-10-06
-
-- Initial release: spec-driven doc generator, doc_screenshot helper,
-  configurable browser driver wiring, and markdown docs viewer.
 
 [Unreleased]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/mauriciozaffari/auto-platform-guide/releases/tag/v0.1.0
