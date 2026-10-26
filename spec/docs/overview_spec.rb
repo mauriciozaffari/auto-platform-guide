@@ -25,7 +25,7 @@
 #
 # ```ruby
 # # Gemfile
-# gem 'auto-platform-guide', github: 'mauriciozaffari/auto-platform-guide', branch: 'main'
+# gem 'auto-platform-guide', '~> 0.1'
 # ```
 #
 # == Configure

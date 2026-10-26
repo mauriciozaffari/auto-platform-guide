@@ -38,11 +38,10 @@ The gem documents itself: `docs/platform-guide/` is generated from
 
 ```ruby
 # Gemfile
-gem 'auto-platform-guide', github: 'mauriciozaffari/auto-platform-guide', branch: 'main'
+gem 'auto-platform-guide'
 ```
 
-Install from the repository; tagged releases also publish to RubyGems once a
-release is cut.
+Tagged releases publish to RubyGems automatically.
 
 ## Setup
 

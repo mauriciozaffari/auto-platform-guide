@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-23 02:16:30 UTC
+Generated: 2026-10-26 12:47:12 UTC
 -->
 
 <h1 id="auto-platform-guide">Auto Platform Guide</h1>
@@ -29,7 +29,7 @@ controller.
 
 ```ruby
 # Gemfile
-gem 'auto-platform-guide', github: 'mauriciozaffari/auto-platform-guide', branch: 'main'
+gem 'auto-platform-guide', '~> 0.1'
 ```
 
 
