@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.metadata['changelog_uri'] = "#{spec.homepage}/blob/main/CHANGELOG.md"
   spec.metadata['rubygems_mfa_required'] = 'true'
 
-  spec.files = Dir['lib/**/*.rb', 'app/views/**/*', 'README.md', 'CHANGELOG.md', 'LICENSE.txt']
+  spec.files = Dir['lib/**/*.rb', 'app/views/**/*', 'app/assets/**/*', 'README.md', 'CHANGELOG.md', 'LICENSE.txt']
   spec.require_paths = ['lib']
 
   spec.add_dependency 'actionpack', '>= 7.1'

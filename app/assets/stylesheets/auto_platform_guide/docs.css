@@ -1,0 +1,292 @@
+/* Minimal docs styling for auto-platform-guide.
+ *
+ * The gem ships plain markup and no stylesheet, so nothing here is loaded
+ * automatically. Copy this file into the host app and import it, or replace it
+ * wholesale with your own design system.
+ *
+ * Every rule is scoped to the classes the gem emits, so it will not leak into
+ * the rest of the application. Only the `.content-header` block touches chrome
+ * the host app may already style; drop it if so.
+ */
+
+:root {
+  --apg-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --apg-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --apg-fg: #1f2328;
+  --apg-muted: #656d76;
+  --apg-surface: #ffffff;
+  --apg-surface-muted: #f6f8fa;
+  --apg-border: #d0d7de;
+  --apg-accent: #0969da;
+  --apg-radius: 6px;
+  --apg-callout-note: #0969da;
+  --apg-callout-tip: #1a7f37;
+  --apg-callout-important: #8250df;
+  --apg-callout-warning: #9a6700;
+  --apg-callout-caution: #cf222e;
+  /* Rouge highlights inline with GitHub's dark token colours, so the block
+     behind them stays dark in both colour schemes. */
+  --apg-code-bg: #161b22;
+  --apg-code-fg: #c9d1d9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --apg-fg: #e6edf3;
+    --apg-muted: #8b949e;
+    --apg-surface: #161b22;
+    --apg-surface-muted: #1f242c;
+    --apg-border: #30363d;
+    --apg-accent: #4493f8;
+    --apg-code-bg: #0d1117;
+  }
+}
+
+/* Page chrome: title and breadcrumb, outside `.documentation`.
+ * Both sit on the host page background rather than the gem's surface, so they
+ * inherit its text colour and never assume a colour scheme. */
+
+.content-header h1 {
+  margin: 0 0 0.5rem;
+  font-family: var(--apg-font);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.content-header .breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  font-family: var(--apg-font);
+  font-size: 0.875rem;
+  list-style: none;
+  opacity: 0.75;
+}
+
+.content-header .breadcrumb li + li::before {
+  margin-right: 0.5rem;
+  color: var(--apg-border);
+  content: "/";
+}
+
+.content-header .breadcrumb a {
+  color: var(--apg-accent);
+  text-decoration: none;
+}
+
+.content-header .breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+/* Rendered markdown. */
+
+.documentation {
+  font-family: var(--apg-font);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--apg-fg);
+}
+
+.documentation .box {
+  background: var(--apg-surface);
+  border: 1px solid var(--apg-border);
+  border-radius: var(--apg-radius);
+}
+
+.documentation .box-body {
+  padding: 1.5rem;
+}
+
+.documentation .box-body > :first-child {
+  margin-top: 0;
+}
+
+.documentation .box-body > :last-child {
+  margin-bottom: 0;
+}
+
+.documentation h1,
+.documentation h2,
+.documentation h3,
+.documentation h4 {
+  margin: 2rem 0 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.documentation h1 {
+  font-size: 1.5rem;
+}
+
+.documentation h2 {
+  padding-bottom: 0.3rem;
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--apg-border);
+}
+
+.documentation h3 {
+  font-size: 1.1rem;
+}
+
+.documentation h4 {
+  font-size: 1rem;
+}
+
+.documentation p,
+.documentation ul,
+.documentation ol {
+  margin: 0 0 1rem;
+}
+
+.documentation ul,
+.documentation ol {
+  padding-left: 1.5rem;
+}
+
+.documentation li + li {
+  margin-top: 0.25rem;
+}
+
+.documentation a {
+  color: var(--apg-accent);
+}
+
+.documentation hr {
+  height: 1px;
+  margin: 2rem 0;
+  background: var(--apg-border);
+  border: 0;
+}
+
+/* Inline code only; fenced blocks are handled below. */
+
+.documentation :not(pre) > code {
+  padding: 0.15em 0.35em;
+  font-family: var(--apg-font-mono);
+  font-size: 0.875em;
+  background: var(--apg-surface-muted);
+  border: 1px solid var(--apg-border);
+  border-radius: 4px;
+}
+
+.documentation pre.code-block {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: var(--apg-font-mono);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--apg-code-fg);
+  background: var(--apg-code-bg);
+  border-radius: var(--apg-radius);
+}
+
+.documentation pre.code-block code {
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+}
+
+/* Diagram source until mermaid.js replaces it, then the rendered SVG. */
+
+.documentation pre.mermaid {
+  margin: 0 0 1rem;
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: var(--apg-font-mono);
+  font-size: 0.875rem;
+  background: var(--apg-surface-muted);
+  border: 1px solid var(--apg-border);
+  border-radius: var(--apg-radius);
+}
+
+.documentation pre.mermaid[data-processed="true"] {
+  text-align: center;
+  background: none;
+  border: 0;
+}
+
+/* Plain blockquotes, then the five callouts the renderer emits. */
+
+.documentation blockquote {
+  margin: 0 0 1rem;
+  padding: 0 1rem;
+  color: var(--apg-muted);
+  border-left: 3px solid var(--apg-border);
+}
+
+.documentation .callout {
+  padding: 0.75rem 1rem;
+  color: var(--apg-fg);
+  background: color-mix(in srgb, var(--apg-callout-color, var(--apg-border)) 8%, transparent);
+  border-left: 4px solid var(--apg-callout-color, var(--apg-border));
+  border-radius: 0 var(--apg-radius) var(--apg-radius) 0;
+}
+
+.documentation .callout > :last-child {
+  margin-bottom: 0;
+}
+
+.documentation .callout-title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+  color: var(--apg-callout-color, var(--apg-fg));
+}
+
+/* The icon is Font Awesome; without it the element collapses harmlessly. */
+
+.documentation .callout-title i {
+  margin-right: 0.25rem;
+}
+
+.documentation .callout-note {
+  --apg-callout-color: var(--apg-callout-note);
+}
+
+.documentation .callout-tip {
+  --apg-callout-color: var(--apg-callout-tip);
+}
+
+.documentation .callout-important {
+  --apg-callout-color: var(--apg-callout-important);
+}
+
+.documentation .callout-warning {
+  --apg-callout-color: var(--apg-callout-warning);
+}
+
+.documentation .callout-caution {
+  --apg-callout-color: var(--apg-callout-caution);
+}
+
+.documentation table {
+  width: 100%;
+  margin: 0 0 1rem;
+  font-size: 0.9375rem;
+  border-collapse: collapse;
+}
+
+.documentation th,
+.documentation td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border: 1px solid var(--apg-border);
+}
+
+.documentation th {
+  font-weight: 600;
+  background: var(--apg-surface-muted);
+}
+
+.documentation .img-responsive {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--apg-border);
+  border-radius: var(--apg-radius);
+}

@@ -24,6 +24,21 @@ and this project adheres to
 - `generate` now fails when a screenshot spec run fails, and shows that run's
   output, instead of silently ignoring the failure.
 
+### Added
+
+- `app/assets/stylesheets/auto_platform_guide/docs.css`, a minimal stylesheet
+  for the docs pages, plus a styling guide covering the class contract and
+  theming.
+- `rails generate auto_platform_guide:styles`, which copies that stylesheet into
+  the host app.
+- Theme-aware `<picture>` images, so one image can follow the reader's colour
+  scheme.
+
+### Fixed
+
+- A blockquote that followed a callout was rendered inside it, because Redcarpet
+  folds blank-line-separated quotes into one callback.
+
 ## [0.1.0] - 2026-10-26
 
 Initial release: spec-driven doc generator, `doc_screenshot` helper, configurable
