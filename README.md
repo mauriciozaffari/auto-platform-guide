@@ -2,6 +2,11 @@
 
 Generate in-app documentation from system specs.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/docs-dark.png">
+  <img alt="A rendered guide page with a title, breadcrumb, table, highlighted code, callouts, a diagram and a screenshot" src="docs/images/docs-light.png">
+</picture>
+
 The gem documents itself: `docs/platform-guide/` is generated from
 `spec/docs/` by `rake auto_platform_guide:render` and checked in CI.
 
@@ -97,10 +102,6 @@ fonts and radii are `--apg-*` custom properties on `:root`; dark mode follows
 `prefers-color-scheme`. Code blocks stay dark in both schemes because Rouge
 writes token colours inline. See [Styling](docs/platform-guide/STYLING.md) for
 the class contract and how to change the code block theme.
-
-![Docs page in light mode](docs/images/docs-light.png)
-
-![Docs page in dark mode](docs/images/docs-dark.png)
 
 ## Writing a documented spec
 
