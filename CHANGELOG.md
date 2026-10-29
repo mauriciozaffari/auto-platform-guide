@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-29
+
 ### Added
 
 - `locales` configuration: translated guides from per-spec `<spec>.<locale>.yml`
@@ -71,5 +73,6 @@ browser driver wiring, and markdown docs viewer.
 
 - `bin/generate-docs`; use `auto_platform_guide:generate` instead.
 
-[Unreleased]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mauriciozaffari/auto-platform-guide/releases/tag/v0.1.0
