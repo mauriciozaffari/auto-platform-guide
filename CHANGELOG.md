@@ -13,9 +13,14 @@ and this project adheres to
 - `locales` configuration: translated guides from per-spec `<spec>.<locale>.yml`
   files, a localized README, locale-specific screenshot directories (`DOC_LOCALE`),
   and a `check` that notices missing, mismatched or outdated translations.
+- `localized_readme` configuration and an optional `category:` in translation
+  files, so the translated README has translated texts, category names and
+  diagram.
 
 ### Changed
 
+- `Document#title` and breadcrumbs use the guide's first heading, falling back to
+  the file name, so `EVENTS.pt-BR.md` no longer shows as "Events.Pt Br".
 - `generate` now fails when a screenshot spec run fails, and shows that run's
   output, instead of silently ignoring the failure.
 
