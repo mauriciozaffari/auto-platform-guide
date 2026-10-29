@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'stringio'
 require 'pathname'
 
 module AutoPlatformGuide
@@ -9,6 +10,8 @@ module AutoPlatformGuide
   # files; `doc_screenshot('name')` calls reference PNGs captured during a
   # SCREENSHOTS=true run.
   class Generator
+    include LocalizedGeneration
+
     # Fallbacks for specs that omit the directives below. Specs with no
     # `@category` collect under DEFAULT_CATEGORY; specs with no `@order` sort
     # after numbered ones. Both defaults push such docs to the end of the TOC.
@@ -34,7 +37,14 @@ module AutoPlatformGuide
       spec_files = argv - FLAGS
       generator = new(spec_files.empty? ? nil : spec_files)
 
-      case FLAGS.find { |flag| argv.include?(flag) }
+      run_mode(generator, FLAGS.find { |flag| argv.include?(flag) })
+    rescue ArgumentError => e
+      warn "✗ #{e.message}"
+      1
+    end
+
+    def self.run_mode(generator, flag)
+      case flag
       when '--check'
         # Verify docs without running specs; used by CI.
         generator.up_to_date? ? 0 : 1
@@ -66,12 +76,14 @@ module AutoPlatformGuide
         return
       end
 
+      validate_translations
       @spec_files.each do |spec_file|
         puts "\nGenerating documentation for #{spec_file}..."
         process_spec(spec_file, run_specs:)
       end
 
       generate_readme
+      config.locales.each { |locale| generate_translation(locale) }
 
       puts "\n✓ Documentation generation complete!"
       puts "  Generated #{@spec_files.size} documentation file(s) in #{config.generated_docs_dir}/"
@@ -83,29 +95,38 @@ module AutoPlatformGuide
     # the committed markdown, ignoring the generation timestamp and the
     # screenshot binaries themselves. Returns true when everything is up to date.
     def up_to_date?
-      stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) }
-
-      if stale.empty?
+      stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) || translations_stale?(spec_file) }
+      readme_stale = stale.empty? && readmes_stale?
+      unless stale.any? || readme_stale
         puts '✓ Platform-guide docs are up to date.'
         return true
       end
 
-      warn "✗ Platform-guide docs are out of date for #{stale.size} spec(s):"
-      stale.each { |spec_file| warn "  - #{spec_file} -> #{generate_output_filename(spec_file)}" }
-      warn ''
-      warn 'Regenerate the affected guide(s) and commit the result:'
-      stale.each { |spec_file| warn %(  rake "auto_platform_guide:generate[#{spec_file}]") }
+      warn '✗ Localized README is out of date; run rake auto_platform_guide:readme' if readme_stale
+      report_stale(stale)
       false
     end
 
     # Rebuild only the README table of contents from the committed docs and
     # their spec `@category`/`@order` directives, without running any specs.
     def regenerate_readme
+      validate_translations
       generate_readme
+      config.locales.each { |locale| translate_readme(locale) }
       puts '✓ Regenerated README.md table of contents.'
     end
 
     private
+
+    def report_stale(stale)
+      return if stale.empty?
+
+      warn "✗ Platform-guide docs are out of date for #{stale.size} spec(s):"
+      stale.each { |spec_file| warn "  - #{spec_file} -> #{generate_output_filename(spec_file)}" }
+      warn ''
+      warn 'Regenerate the affected guide(s) and commit the result:'
+      stale.each { |spec_file| warn %(  rake "auto_platform_guide:generate[#{spec_file}]") }
+    end
 
     def doc_stale?(spec_file)
       output_file = generate_output_filename(spec_file)
@@ -150,8 +171,18 @@ module AutoPlatformGuide
     def run_spec_with_screenshots(spec_file)
       FileUtils.mkdir_p(config.screenshots_dir)
 
-      command = "SCREENSHOTS=true bundle exec rspec --format documentation #{spec_file}"
-      system(command, err: File::NULL)
+      # Only the examples that take screenshots run in the browser; the rest of
+      # the file would otherwise be forced through it too (SCREENSHOTS=true).
+      lines = spec(spec_file).screenshot_calls.pluck(:line_number).uniq
+      return if lines.empty?
+
+      command = ['bundle', 'exec', 'rspec', '--format', 'documentation', *lines.map { |line| "#{spec_file}:#{line}" }]
+      raise "Screenshot capture failed: #{spec_file}" unless system({ 'SCREENSHOTS' => 'true' }, *command)
+
+      config.locales.each do |locale|
+        env = { 'SCREENSHOTS' => 'true', 'DOC_LOCALE' => locale.to_s }
+        raise "Screenshot capture failed: #{spec_file} (#{locale})" unless system(env, *command)
+      end
     end
 
     def generate_output_filename(spec_file)
@@ -176,7 +207,7 @@ module AutoPlatformGuide
     # Render the markdown body (everything after the timestamp header) from a
     # spec's doc comments and screenshot calls. Shared by generation and --check
     # so both produce byte-identical output for the same spec.
-    def render_doc_body(doc_comments, screenshot_calls)
+    def render_doc_body(doc_comments, screenshot_calls, locale: nil)
       body = +''
 
       doc_comments.each_with_index do |comment, index|
@@ -190,7 +221,7 @@ module AutoPlatformGuide
         next_comment_line = doc_comments[index + 1]&.dig(:line_number) || Float::INFINITY
         screenshots = find_related_screenshots(comment[:line_number], next_comment_line, screenshot_calls)
         screenshots.each do |screenshot|
-          rendered = render_screenshot(screenshot[:path])
+          rendered = render_screenshot(screenshot[:path], locale:)
           body << rendered if rendered
         end
       end
@@ -205,12 +236,11 @@ module AutoPlatformGuide
       end
     end
 
-    def render_screenshot(screenshot_path)
-      # Only embed screenshots whose generated file exists on disk. Image URLs
-      # mirror screenshots_dir so a customized dir keeps working links.
-      return unless File.exist?(File.join(config.screenshots_dir, "#{screenshot_path}.png"))
+    def render_screenshot(screenshot_path, locale: nil)
+      directory = [config.screenshots_dir, locale].compact.join('/')
+      return unless File.exist?(File.join(directory, "#{screenshot_path}.png"))
 
-      prefix = "/#{config.screenshots_dir.sub(%r{\A/+}, '').sub(%r{/+\z}, '')}"
+      prefix = "/#{directory.sub(%r{\A/+}, '').sub(%r{/+\z}, '')}"
       "![#{screenshot_path}](#{prefix}/#{screenshot_path}.png)\n\n"
     end
 
@@ -225,34 +255,35 @@ module AutoPlatformGuide
     # `@order`. Called at the end of a full/partial generation run and standalone
     # via `regenerate_readme` (the `--readme-only` mode).
     def generate_readme
-      readme_path = File.join(config.generated_docs_dir, 'README.md')
+      File.write(File.join(config.generated_docs_dir, 'README.md'), "#{timestamp_header}#{readme_body}")
+    end
 
-      File.open(readme_path, 'w') do |f|
-        f.puts '<!--'
-        f.puts "Generated: #{generated_at}"
-        f.puts '-->'
-        f.puts
+    # The README markdown after the timestamp header. With a locale it uses the
+    # translated titles and category names, and `localized_readme[locale]`
+    # (`'preamble'`, `'contents'`) for the fixed texts, falling back to English.
+    def readme_body(locale = nil)
+      texts = config.localized_readme.fetch(locale.to_s, {})
+      out = StringIO.new
 
-        f.write(config.readme_preamble || README_PREAMBLE)
+      out.write(texts['preamble'] || config.readme_preamble || README_PREAMBLE)
 
-        # Build the TOC from every documented spec (not just the ones regenerated
-        # in this run) so running for a subset of specs doesn't drop other
-        # entries. Group by `@category` and order by `@order`.
-        groups = toc_groups
+      # Build the TOC from every documented spec (not just the ones regenerated
+      # in this run) so running for a subset of specs doesn't drop other
+      # entries. Group by `@category` and order by `@order`.
+      groups = toc_groups(locale)
 
-        f.puts category_workflow_diagram(groups.map(&:first))
-        f.puts
-        f.puts '<h2 id="table-of-contents">Table of Contents</h2>'
+      out.puts category_workflow_diagram(groups.map(&:first))
+      out.puts
+      out.puts %(<h2 id="table-of-contents">#{texts['contents'] || 'Table of Contents'}</h2>)
 
-        groups.each do |category, entries|
-          f.puts
-          f.puts %(<h3 id="#{slugify(category)}">#{category}</h3>)
-          f.puts
-          entries.each do |entry|
-            f.puts "- [#{entry[:title]}](#{entry[:file]})"
-          end
-        end
-      end
+      groups.each { |category, entries| out.write(toc_section(category, entries)) }
+
+      out.string
+    end
+
+    def toc_section(category, entries)
+      links = entries.map { |entry| "- [#{entry[:title]}](#{entry[:file]})\n" }.join
+      %(\n<h3 id="#{slugify(category)}">#{category}</h3>\n\n#{links})
     end
 
     # A Mermaid flowchart of the guide categories in workflow order, rendered by
@@ -276,25 +307,19 @@ module AutoPlatformGuide
     # listed in ascending order of the smallest `@order` they contain (ties broken
     # alphabetically), and entries within a category are ordered by `@order` then
     # title. Only specs whose generated doc actually exists on disk are linked.
-    def toc_groups
+    def toc_groups(locale = nil)
       entries = find_documented_specs.filter_map do |spec_file|
         file = File.basename(generate_output_filename(spec_file))
         next unless File.exist?(File.join(config.generated_docs_dir, file))
 
-        parsed = spec(spec_file)
-        directives = parsed.directives
-        {
-          file:,
-          title: parsed.title,
-          category: directives[:category] || DEFAULT_CATEGORY,
-          order: directives[:order] || DEFAULT_ORDER
-        }
+        toc_entry(spec_file, file, locale)
       end
 
-      entries
-        .group_by { |entry| entry[:category] }
-        .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
-        .map { |category, group| [category, group.sort_by { |entry| [entry[:order], entry[:title]] }] }
+      groups = entries.group_by { |entry| entry[:category] }
+                      .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
+      groups.map do |category, group|
+        [localized_category(group, category), group.sort_by { |entry| [entry[:order], entry[:title]] }]
+      end
     end
   end
 end

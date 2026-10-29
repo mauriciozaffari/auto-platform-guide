@@ -17,6 +17,12 @@ module AutoPlatformGuide
     # Markdown written above the generated README table of contents. Defaults to
     # Generator::README_PREAMBLE when nil.
     attr_accessor :readme_preamble
+    # Extra locales to generate beside the English doc comments, e.g. ['pt-BR'].
+    # Each documented spec then needs a `<spec>.<locale>.yml` next to it.
+    attr_accessor :locales
+    # Fixed README texts per locale, e.g. { 'pt-BR' => { 'preamble' => '...', 'contents' => 'Índice' } }.
+    # Anything left out stays in English.
+    attr_accessor :localized_readme
     # URL prefix where the docs viewer is mounted. Links, breadcrumbs and
     # wikilinks are built from it, so it must match the host's route.
     attr_reader :docs_path
@@ -28,6 +34,8 @@ module AutoPlatformGuide
       @specs_glob = 'spec/system/**/*_spec.rb'
       @browser_driver = :playwright
       @readme_preamble = nil
+      @locales = []
+      @localized_readme = {}
       @docs_path = '/docs'
     end
 

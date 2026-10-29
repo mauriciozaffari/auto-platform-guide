@@ -18,6 +18,7 @@ module AutoPlatformGuide
     class RecordNotFound < StandardError; end
 
     FOLDER_INDEX_NAMES = ['README', '00 - Index'].freeze
+    H1 = %r{\A\s*<h1[^>]*>(.*?)</h1>}
 
     class Renderer < Redcarpet::Render::HTML
       include ActionView::Helpers::TagHelper
@@ -255,15 +256,17 @@ module AutoPlatformGuide
       Renderer.render(path, base_dir: dir == '.' ? nil : dir)
     end
 
+    # The guide's first heading (already translated in localized guides), else the file name.
     def title
-      name.titleize
+      heading = File.file?(path) ? File.foreach(path, encoding: 'UTF-8').filter_map { |line| line[H1, 1] }.first : nil
+      heading.presence || name.titleize
     end
 
     def breadcrumbs
       parts = id.split('/')
 
       parts.each_with_index.map do |part, i|
-        { name: part.titleize, path: "#{self.class.docs_path}/#{parts[0..i].join('/')}" }
+        { name: i == parts.size - 1 ? title : part.titleize, path: "#{self.class.docs_path}/#{parts[0..i].join('/')}" }
       end
     end
   end

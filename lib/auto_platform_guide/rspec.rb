@@ -20,7 +20,9 @@ module AutoPlatformGuide
       return unless AutoPlatformGuide.screenshots_enabled?
 
       sleep 0.5 # Allow time for animations to complete
-      save_screenshot(Rails.root.join(AutoPlatformGuide.configuration.screenshots_dir, "#{filename}.png")) # rubocop:disable Lint/Debugger
+      directory = AutoPlatformGuide.configuration.screenshots_dir
+      directory = File.join(directory, ENV['DOC_LOCALE']) if ENV['DOC_LOCALE'].present?
+      save_screenshot(Rails.root.join(directory, "#{filename}.png")) # rubocop:disable Lint/Debugger
     end
   end
 
@@ -53,8 +55,14 @@ module AutoPlatformGuide
     end
   end
 
+  def self.apply_doc_locale
+    locale = ENV.fetch('DOC_LOCALE', nil)
+    I18n.locale = locale if locale.present?
+  end
+
   def self.prepare_system_example(example, max_wait_time, screen_size, browser_options)
     Capybara.default_max_wait_time = max_wait_time
+    apply_doc_locale
 
     if screenshots_enabled?
       drive_with_browser(example, screen_size:, options: browser_options)

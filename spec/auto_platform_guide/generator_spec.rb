@@ -65,6 +65,129 @@ RSpec.describe AutoPlatformGuide::Generator do
       RUBY
     end
 
+    def write_translation(digest: AutoPlatformGuide::SpecFile.new(isolated_spec).source_digest, category: nil)
+      File.write('spec/example_spec.pt-BR.yml', <<~YAML)
+        source_digest: #{digest}
+        #{"category: #{category}" if category}
+        sections:
+          - title: Configurações
+            body: Gerencie as configurações.
+          - title: Detalhes
+            body: Mais informações.
+      YAML
+    end
+
+    context 'with a pt-BR locale configured' do
+      before { AutoPlatformGuide.configuration.locales = ['pt-BR'] }
+
+      after { AutoPlatformGuide.configuration.locales = [] }
+
+      it 'generates and checks per-spec translations with localized screenshots' do
+        write_translation
+        FileUtils.mkdir_p('shots/pt-BR')
+        FileUtils.touch('shots/pt-BR/settings.png')
+        described_class.new.generate(run_specs: false)
+        expect(File.read('guides/EXAMPLE.pt-BR.md')).to include('Configurações', '/shots/pt-BR/settings.png')
+        expect(File.read('guides/README.pt-BR.md')).to include('[Configurações](EXAMPLE.pt-BR.md)')
+        expect(described_class.new.up_to_date?).to be(true)
+      end
+
+      it 'translates the README texts, category names and diagram, falling back to English' do
+        File.write(isolated_spec, "# @category Settings\n# @order 1\n#{File.read(isolated_spec)}")
+        write_translation(category: 'Configurações')
+        AutoPlatformGuide.configuration.localized_readme = { 'pt-BR' => { 'preamble' => "Guia\n",
+                                                                          'contents' => 'Índice' } }
+        described_class.new.generate(run_specs: false)
+
+        readme = File.read('guides/README.pt-BR.md')
+        expect(readme).to include("Guia\n", '<h2 id="table-of-contents">Índice</h2>',
+                                  '<h3 id="configuraes">Configurações')
+        expect(readme).to include('c0["Configurações"]')
+        expect(File.read('guides/README.md')).to include('Table of Contents', 'Settings')
+        expect(described_class.new.up_to_date?).to be(true)
+      ensure
+        AutoPlatformGuide.configuration.localized_readme = {}
+      end
+
+      it 'flags a translation as stale when the English source changes' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+        File.write(isolated_spec, File.read(isolated_spec).sub('How to manage settings.', 'Changed.'))
+
+        expect(described_class.new.up_to_date?).to be(false)
+      end
+
+      it 'fails clearly, before writing anything, when a translation is missing' do
+        expect(described_class.run([isolated_spec])).to eq(1)
+        expect(File).not_to exist('guides/EXAMPLE.md')
+      end
+
+      it 'treats empty, malformed, mismatched or outdated translation files as errors' do
+        FileUtils.mkdir_p('guides')
+        File.write('guides/EXAMPLE.pt-BR.md', 'x')
+        stale_digest = "source_digest: old\nsections:\n  - {title: a, body: b}\n  - {title: c, body: d}\n"
+        ['', "sections: nope\n", "sections: []\n", stale_digest].each do |content|
+          File.write('spec/example_spec.pt-BR.yml', content)
+          expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
+          expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+            .to raise_error(ArgumentError)
+        end
+      end
+
+      it 'flags a missing localized guide even when its translation exists' do
+        write_translation
+
+        expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
+      end
+
+      it 'rejects sections missing a title or body' do
+        write_translation
+        path = 'spec/example_spec.pt-BR.yml'
+        File.write(path, File.read(path).sub('body: Mais informações.', 'body:'))
+        expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+          .to raise_error(ArgumentError, /sections need a title and body/)
+      end
+
+      it 'names the missing translation file' do
+        expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+          .to raise_error(ArgumentError, /Missing translation file/)
+        expect(described_class.new.send(:readmes_stale?)).to be(true)
+      end
+
+      it 'keeps the localized README current and flags it when stale' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+        File.write('guides/README.pt-BR.md', 'old')
+
+        expect(described_class.new.up_to_date?).to be(false)
+        described_class.new.regenerate_readme
+        expect(described_class.new.up_to_date?).to be(true)
+      end
+    end
+
+    it 'does not run the suite when the spec has no screenshot calls' do
+      File.write(isolated_spec, "# = Guide\n# Content\n")
+      runner = described_class.new([isolated_spec])
+      allow(runner).to receive(:system)
+      runner.send(:run_spec_with_screenshots, isolated_spec)
+      expect(runner).not_to have_received(:system)
+    end
+
+    it 'fails when screenshot capture fails in either locale' do
+      config = AutoPlatformGuide.configuration
+      config.locales = ['pt-BR']
+      allow(generator).to receive(:system).and_return(false, true, false)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.to raise_error(/Screenshot capture failed/)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.to raise_error(/pt-BR/)
+      allow(generator).to receive(:system).and_return(true)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.not_to raise_error
+      expect(generator).to have_received(:system)
+        .with({ 'SCREENSHOTS' => 'true', 'DOC_LOCALE' => 'pt-BR' }, 'bundle', 'exec', 'rspec', '--format',
+              'documentation', "#{isolated_spec}:4", "#{isolated_spec}:8").at_least(:once)
+    ensure
+      config.locales = []
+    end
+
     it 'reports stale when the output file is missing' do
       expect(described_class.new([isolated_spec]).up_to_date?).to be(false)
     end

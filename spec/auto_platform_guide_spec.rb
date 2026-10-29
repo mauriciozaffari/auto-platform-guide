@@ -336,7 +336,9 @@ RSpec.describe AutoPlatformGuide do
 
       expect(rake_tasks.size).to eq(1)
       rake_tasks.first.call
-      expect(Rake::Task.task_defined?('auto_platform_guide:generate')).to be(true)
+      %w[generate check readme render].each do |name|
+        expect(Rake::Task["auto_platform_guide:#{name}"].prerequisites.delete('environment')).to eq('environment')
+      end
     end
   end
 
@@ -370,11 +372,40 @@ RSpec.describe AutoPlatformGuide do
       expect(host.saved.to_s).to end_with('docs/screenshots/pages/home.png')
     end
 
+    it 'saves localized screenshots in a separate directory' do
+      ENV['SCREENSHOTS'] = 'true'
+      ENV['DOC_LOCALE'] = 'pt-BR'
+      host.doc_screenshot('pages/home')
+      expect(host.saved.to_s).to end_with('docs/screenshots/pt-BR/pages/home.png')
+    ensure
+      ENV.delete('DOC_LOCALE')
+    end
+
     it 'does nothing when disabled' do
       ENV['SCREENSHOTS'] = nil
 
       expect(host.doc_screenshot('pages/home')).to be_nil
       expect(host.saved).to be_nil
+    end
+  end
+
+  describe '.apply_doc_locale' do
+    around do |test|
+      original = I18n.locale
+      test.run
+    ensure
+      ENV.delete('DOC_LOCALE')
+      I18n.locale = original
+    end
+
+    it 'switches I18n to DOC_LOCALE and leaves it alone otherwise' do
+      I18n.available_locales = %i[en pt-BR]
+      described_class.apply_doc_locale
+      expect(I18n.locale).to eq(:en)
+
+      ENV['DOC_LOCALE'] = 'pt-BR'
+      described_class.apply_doc_locale
+      expect(I18n.locale).to eq(:'pt-BR')
     end
   end
 end
