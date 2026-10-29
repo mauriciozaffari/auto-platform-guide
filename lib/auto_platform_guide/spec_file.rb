@@ -35,6 +35,19 @@ module AutoPlatformGuide
       @doc_comments ||= parse_doc_comments
     end
 
+    # Translate each section while retaining its source line for screenshot placement.
+    def translated_comments(locale)
+      require 'yaml'
+      path = @path.sub(/\.rb\z/, ".#{locale}.yml")
+      translations = YAML.safe_load_file(path)
+      sections = translations.fetch('sections')
+      raise ArgumentError, "Translation sections do not match #{@path}" unless sections.size == doc_comments.size
+
+      doc_comments.zip(sections).map do |source, translated|
+        source.merge(title: translated.fetch('title'), content: translated.fetch('body').lines.map(&:chomp))
+      end
+    end
+
     # `{ path:, line_number: }` for every `doc_screenshot('...')` call.
     def screenshot_calls
       @screenshot_calls ||= parse_screenshot_calls

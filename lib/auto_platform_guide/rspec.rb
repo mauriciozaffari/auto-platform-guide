@@ -20,7 +20,9 @@ module AutoPlatformGuide
       return unless AutoPlatformGuide.screenshots_enabled?
 
       sleep 0.5 # Allow time for animations to complete
-      save_screenshot(Rails.root.join(AutoPlatformGuide.configuration.screenshots_dir, "#{filename}.png")) # rubocop:disable Lint/Debugger
+      directory = AutoPlatformGuide.configuration.screenshots_dir
+      directory = File.join(directory, ENV['DOC_LOCALE']) if ENV['DOC_LOCALE'].present?
+      save_screenshot(Rails.root.join(directory, "#{filename}.png")) # rubocop:disable Lint/Debugger
     end
   end
 

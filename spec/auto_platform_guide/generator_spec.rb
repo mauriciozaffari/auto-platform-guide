@@ -65,6 +65,56 @@ RSpec.describe AutoPlatformGuide::Generator do
       RUBY
     end
 
+    def write_translation
+      File.write('spec/example_spec.pt-BR.yml', <<~YAML)
+        sections:
+          - title: Configurações
+            body: Gerencie as configurações.
+          - title: Detalhes
+            body: Mais informações.
+      YAML
+    end
+
+    it 'generates and checks per-spec translations with localized screenshots' do
+      config = AutoPlatformGuide.configuration
+      config.locales = ['pt-BR']
+      write_translation
+      FileUtils.mkdir_p('shots/pt-BR')
+      FileUtils.touch('shots/pt-BR/settings.png')
+      described_class.new.generate(run_specs: false)
+      expect(File.read('guides/EXAMPLE.pt-BR.md')).to include('Configurações', '/shots/pt-BR/settings.png')
+      expect(File.read('guides/README.pt-BR.md')).to include('[Configurações](EXAMPLE.pt-BR.md)')
+      expect(described_class.new.up_to_date?).to be(true)
+      File.delete('spec/example_spec.pt-BR.yml')
+      expect(described_class.new.up_to_date?).to be(false)
+    ensure
+      config.locales = []
+    end
+
+    it 'detects a missing localized guide and mismatched translations' do
+      config = AutoPlatformGuide.configuration
+      config.locales = ['pt-BR']
+      expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
+      write_translation
+      described_class.new.generate(run_specs: false)
+      File.write('spec/example_spec.pt-BR.yml', "sections: []\n")
+      expect(described_class.new.up_to_date?).to be(false)
+    ensure
+      config.locales = []
+    end
+
+    it 'fails when screenshot capture fails in either locale' do
+      config = AutoPlatformGuide.configuration
+      config.locales = ['pt-BR']
+      allow(generator).to receive(:system).and_return(false, true, false)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.to raise_error(/Screenshot capture failed/)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.to raise_error(/pt-BR/)
+      allow(generator).to receive(:system).and_return(true)
+      expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.not_to raise_error
+    ensure
+      config.locales = []
+    end
+
     it 'reports stale when the output file is missing' do
       expect(described_class.new([isolated_spec]).up_to_date?).to be(false)
     end

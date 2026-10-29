@@ -4,6 +4,7 @@ require 'auto_platform_guide/version'
 require 'auto_platform_guide/configuration'
 require 'auto_platform_guide/spec_file'
 require 'auto_platform_guide/document'
+require 'auto_platform_guide/localized_generation'
 require 'auto_platform_guide/generator'
 require 'auto_platform_guide/docs_controller_actions'
 

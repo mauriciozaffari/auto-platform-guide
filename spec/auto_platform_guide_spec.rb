@@ -370,6 +370,15 @@ RSpec.describe AutoPlatformGuide do
       expect(host.saved.to_s).to end_with('docs/screenshots/pages/home.png')
     end
 
+    it 'saves localized screenshots in a separate directory' do
+      ENV['SCREENSHOTS'] = 'true'
+      ENV['DOC_LOCALE'] = 'pt-BR'
+      host.doc_screenshot('pages/home')
+      expect(host.saved.to_s).to end_with('docs/screenshots/pt-BR/pages/home.png')
+    ensure
+      ENV.delete('DOC_LOCALE')
+    end
+
     it 'does nothing when disabled' do
       ENV['SCREENSHOTS'] = nil
 

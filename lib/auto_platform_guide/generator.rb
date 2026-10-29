@@ -9,6 +9,8 @@ module AutoPlatformGuide
   # files; `doc_screenshot('name')` calls reference PNGs captured during a
   # SCREENSHOTS=true run.
   class Generator
+    include LocalizedGeneration
+
     # Fallbacks for specs that omit the directives below. Specs with no
     # `@category` collect under DEFAULT_CATEGORY; specs with no `@order` sort
     # after numbered ones. Both defaults push such docs to the end of the TOC.
@@ -72,6 +74,7 @@ module AutoPlatformGuide
       end
 
       generate_readme
+      config.locales.each { |locale| generate_translation(locale) }
 
       puts "\n✓ Documentation generation complete!"
       puts "  Generated #{@spec_files.size} documentation file(s) in #{config.generated_docs_dir}/"
@@ -83,7 +86,7 @@ module AutoPlatformGuide
     # the committed markdown, ignoring the generation timestamp and the
     # screenshot binaries themselves. Returns true when everything is up to date.
     def up_to_date?
-      stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) }
+      stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) || translations_stale?(spec_file) }
 
       if stale.empty?
         puts '✓ Platform-guide docs are up to date.'
@@ -150,8 +153,13 @@ module AutoPlatformGuide
     def run_spec_with_screenshots(spec_file)
       FileUtils.mkdir_p(config.screenshots_dir)
 
-      command = "SCREENSHOTS=true bundle exec rspec --format documentation #{spec_file}"
-      system(command, err: File::NULL)
+      command = ['bundle', 'exec', 'rspec', '--format', 'documentation', spec_file]
+      raise "Screenshot capture failed: #{spec_file}" unless system({ 'SCREENSHOTS' => 'true' }, *command)
+
+      config.locales.each do |locale|
+        env = { 'SCREENSHOTS' => 'true', 'DOC_LOCALE' => locale.to_s }
+        raise "Screenshot capture failed: #{spec_file} (#{locale})" unless system(env, *command)
+      end
     end
 
     def generate_output_filename(spec_file)
@@ -176,7 +184,7 @@ module AutoPlatformGuide
     # Render the markdown body (everything after the timestamp header) from a
     # spec's doc comments and screenshot calls. Shared by generation and --check
     # so both produce byte-identical output for the same spec.
-    def render_doc_body(doc_comments, screenshot_calls)
+    def render_doc_body(doc_comments, screenshot_calls, locale: nil)
       body = +''
 
       doc_comments.each_with_index do |comment, index|
@@ -190,7 +198,7 @@ module AutoPlatformGuide
         next_comment_line = doc_comments[index + 1]&.dig(:line_number) || Float::INFINITY
         screenshots = find_related_screenshots(comment[:line_number], next_comment_line, screenshot_calls)
         screenshots.each do |screenshot|
-          rendered = render_screenshot(screenshot[:path])
+          rendered = render_screenshot(screenshot[:path], locale:)
           body << rendered if rendered
         end
       end
@@ -205,12 +213,11 @@ module AutoPlatformGuide
       end
     end
 
-    def render_screenshot(screenshot_path)
-      # Only embed screenshots whose generated file exists on disk. Image URLs
-      # mirror screenshots_dir so a customized dir keeps working links.
-      return unless File.exist?(File.join(config.screenshots_dir, "#{screenshot_path}.png"))
+    def render_screenshot(screenshot_path, locale: nil)
+      directory = [config.screenshots_dir, locale].compact.join('/')
+      return unless File.exist?(File.join(directory, "#{screenshot_path}.png"))
 
-      prefix = "/#{config.screenshots_dir.sub(%r{\A/+}, '').sub(%r{/+\z}, '')}"
+      prefix = "/#{directory.sub(%r{\A/+}, '').sub(%r{/+\z}, '')}"
       "![#{screenshot_path}](#{prefix}/#{screenshot_path}.png)\n\n"
     end
 
