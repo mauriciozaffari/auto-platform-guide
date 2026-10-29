@@ -170,7 +170,10 @@ module AutoPlatformGuide
     def run_spec_with_screenshots(spec_file)
       FileUtils.mkdir_p(config.screenshots_dir)
 
-      command = ['bundle', 'exec', 'rspec', '--format', 'documentation', spec_file]
+      # Only the examples that take screenshots run in the browser; the rest of
+      # the file would otherwise be forced through it too (SCREENSHOTS=true).
+      lines = spec(spec_file).screenshot_calls.pluck(:line_number).uniq
+      command = ['bundle', 'exec', 'rspec', '--format', 'documentation', *lines.map { |line| "#{spec_file}:#{line}" }]
       raise "Screenshot capture failed: #{spec_file}" unless system({ 'SCREENSHOTS' => 'true' }, *command)
 
       config.locales.each do |locale|

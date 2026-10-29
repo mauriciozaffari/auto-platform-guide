@@ -147,6 +147,9 @@ RSpec.describe AutoPlatformGuide::Generator do
       expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.to raise_error(/pt-BR/)
       allow(generator).to receive(:system).and_return(true)
       expect { generator.send(:run_spec_with_screenshots, isolated_spec) }.not_to raise_error
+      expect(generator).to have_received(:system)
+        .with({ 'SCREENSHOTS' => 'true', 'DOC_LOCALE' => 'pt-BR' }, 'bundle', 'exec', 'rspec', '--format',
+              'documentation', "#{isolated_spec}:4", "#{isolated_spec}:8").at_least(:once)
     ensure
       config.locales = []
     end
