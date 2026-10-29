@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'digest'
+require 'yaml'
+
 module AutoPlatformGuide
   # A system spec file carrying `# = Heading` doc comments and
   # `doc_screenshot('name')` calls. Parses it once and exposes what the
@@ -35,13 +38,16 @@ module AutoPlatformGuide
       @doc_comments ||= parse_doc_comments
     end
 
+    # Short fingerprint of the English doc comments. A translation file records it
+    # as `source_digest`, so editing the English text flags the translation stale.
+    def source_digest
+      Digest::SHA256.hexdigest(doc_comments.map { |c| [c[:title], *c[:content]].join("\n") }.join("\n\n"))[0, 12]
+    end
+
     # Translate each section while retaining its source line for screenshot placement.
     def translated_comments(locale)
-      require 'yaml'
       path = @path.sub(/\.rb\z/, ".#{locale}.yml")
-      translations = YAML.safe_load_file(path)
-      sections = translations.fetch('sections')
-      raise ArgumentError, "Translation sections do not match #{@path}" unless sections.size == doc_comments.size
+      sections = translation_sections(path)
 
       doc_comments.zip(sections).map do |source, translated|
         source.merge(title: translated.fetch('title'), content: translated.fetch('body').lines.map(&:chomp))
@@ -69,6 +75,24 @@ module AutoPlatformGuide
 
     def lines
       @lines ||= File.readlines(@path, encoding: 'UTF-8')
+    end
+
+    def translation_sections(path)
+      raise ArgumentError, "Missing translation file #{path}" unless File.file?(path)
+
+      data = YAML.safe_load_file(path)
+      sections = data.is_a?(Hash) ? data['sections'] : nil
+      raise ArgumentError, "#{path} needs a `sections` list" unless sections.is_a?(Array)
+      unless sections.size == doc_comments.size
+        raise ArgumentError,
+              "#{path} has #{sections.size} sections, #{@path} has #{doc_comments.size}"
+      end
+      unless data['source_digest'] == source_digest
+        raise ArgumentError,
+              "#{path} is out of date: set `source_digest: #{source_digest}` after updating it"
+      end
+
+      sections
     end
 
     def first_match(pattern)

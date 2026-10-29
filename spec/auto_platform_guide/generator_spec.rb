@@ -65,8 +65,9 @@ RSpec.describe AutoPlatformGuide::Generator do
       RUBY
     end
 
-    def write_translation
+    def write_translation(digest: AutoPlatformGuide::SpecFile.new(isolated_spec).source_digest)
       File.write('spec/example_spec.pt-BR.yml', <<~YAML)
+        source_digest: #{digest}
         sections:
           - title: Configurações
             body: Gerencie as configurações.
@@ -75,32 +76,67 @@ RSpec.describe AutoPlatformGuide::Generator do
       YAML
     end
 
-    it 'generates and checks per-spec translations with localized screenshots' do
-      config = AutoPlatformGuide.configuration
-      config.locales = ['pt-BR']
-      write_translation
-      FileUtils.mkdir_p('shots/pt-BR')
-      FileUtils.touch('shots/pt-BR/settings.png')
-      described_class.new.generate(run_specs: false)
-      expect(File.read('guides/EXAMPLE.pt-BR.md')).to include('Configurações', '/shots/pt-BR/settings.png')
-      expect(File.read('guides/README.pt-BR.md')).to include('[Configurações](EXAMPLE.pt-BR.md)')
-      expect(described_class.new.up_to_date?).to be(true)
-      File.delete('spec/example_spec.pt-BR.yml')
-      expect(described_class.new.up_to_date?).to be(false)
-    ensure
-      config.locales = []
-    end
+    context 'with a pt-BR locale configured' do
+      before { AutoPlatformGuide.configuration.locales = ['pt-BR'] }
 
-    it 'detects a missing localized guide and mismatched translations' do
-      config = AutoPlatformGuide.configuration
-      config.locales = ['pt-BR']
-      expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
-      write_translation
-      described_class.new.generate(run_specs: false)
-      File.write('spec/example_spec.pt-BR.yml', "sections: []\n")
-      expect(described_class.new.up_to_date?).to be(false)
-    ensure
-      config.locales = []
+      after { AutoPlatformGuide.configuration.locales = [] }
+
+      it 'generates and checks per-spec translations with localized screenshots' do
+        write_translation
+        FileUtils.mkdir_p('shots/pt-BR')
+        FileUtils.touch('shots/pt-BR/settings.png')
+        described_class.new.generate(run_specs: false)
+        expect(File.read('guides/EXAMPLE.pt-BR.md')).to include('Configurações', '/shots/pt-BR/settings.png')
+        expect(File.read('guides/README.pt-BR.md')).to include('[Configurações](EXAMPLE.pt-BR.md)')
+        expect(described_class.new.up_to_date?).to be(true)
+      end
+
+      it 'flags a translation as stale when the English source changes' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+        File.write(isolated_spec, File.read(isolated_spec).sub('How to manage settings.', 'Changed.'))
+
+        expect(described_class.new.up_to_date?).to be(false)
+      end
+
+      it 'fails clearly, before writing anything, when a translation is missing' do
+        expect(described_class.run([isolated_spec])).to eq(1)
+        expect(File).not_to exist('guides/EXAMPLE.md')
+      end
+
+      it 'treats empty, malformed, mismatched or outdated translation files as errors' do
+        FileUtils.mkdir_p('guides')
+        File.write('guides/EXAMPLE.pt-BR.md', 'x')
+        stale_digest = "source_digest: old\nsections:\n  - {title: a, body: b}\n  - {title: c, body: d}\n"
+        ['', "sections: nope\n", "sections: []\n", stale_digest].each do |content|
+          File.write('spec/example_spec.pt-BR.yml', content)
+          expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
+          expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+            .to raise_error(ArgumentError)
+        end
+      end
+
+      it 'flags a missing localized guide even when its translation exists' do
+        write_translation
+
+        expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
+      end
+
+      it 'names the missing translation file' do
+        expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+          .to raise_error(ArgumentError, /Missing translation file/)
+        expect(described_class.new.send(:readmes_stale?)).to be(true)
+      end
+
+      it 'keeps the localized README current and flags it when stale' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+        File.write('guides/README.pt-BR.md', 'old')
+
+        expect(described_class.new.up_to_date?).to be(false)
+        described_class.new.regenerate_readme
+        expect(described_class.new.up_to_date?).to be(true)
+      end
     end
 
     it 'fails when screenshot capture fails in either locale' do

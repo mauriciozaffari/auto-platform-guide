@@ -386,4 +386,24 @@ RSpec.describe AutoPlatformGuide do
       expect(host.saved).to be_nil
     end
   end
+
+  describe '.apply_doc_locale' do
+    around do |test|
+      original = I18n.locale
+      test.run
+    ensure
+      ENV.delete('DOC_LOCALE')
+      I18n.locale = original
+    end
+
+    it 'switches I18n to DOC_LOCALE and leaves it alone otherwise' do
+      I18n.available_locales = %i[en pt-BR]
+      described_class.apply_doc_locale
+      expect(I18n.locale).to eq(:en)
+
+      ENV['DOC_LOCALE'] = 'pt-BR'
+      described_class.apply_doc_locale
+      expect(I18n.locale).to eq(:'pt-BR')
+    end
+  end
 end

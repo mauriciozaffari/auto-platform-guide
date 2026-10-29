@@ -36,7 +36,14 @@ module AutoPlatformGuide
       spec_files = argv - FLAGS
       generator = new(spec_files.empty? ? nil : spec_files)
 
-      case FLAGS.find { |flag| argv.include?(flag) }
+      run_mode(generator, FLAGS.find { |flag| argv.include?(flag) })
+    rescue ArgumentError => e
+      warn "✗ #{e.message}"
+      1
+    end
+
+    def self.run_mode(generator, flag)
+      case flag
       when '--check'
         # Verify docs without running specs; used by CI.
         generator.up_to_date? ? 0 : 1
@@ -68,6 +75,7 @@ module AutoPlatformGuide
         return
       end
 
+      validate_translations
       @spec_files.each do |spec_file|
         puts "\nGenerating documentation for #{spec_file}..."
         process_spec(spec_file, run_specs:)
@@ -87,28 +95,37 @@ module AutoPlatformGuide
     # screenshot binaries themselves. Returns true when everything is up to date.
     def up_to_date?
       stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) || translations_stale?(spec_file) }
-
-      if stale.empty?
+      readme_stale = stale.empty? && readmes_stale?
+      unless stale.any? || readme_stale
         puts '✓ Platform-guide docs are up to date.'
         return true
       end
 
-      warn "✗ Platform-guide docs are out of date for #{stale.size} spec(s):"
-      stale.each { |spec_file| warn "  - #{spec_file} -> #{generate_output_filename(spec_file)}" }
-      warn ''
-      warn 'Regenerate the affected guide(s) and commit the result:'
-      stale.each { |spec_file| warn %(  rake "auto_platform_guide:generate[#{spec_file}]") }
+      warn '✗ Localized README is out of date; run rake auto_platform_guide:readme' if readme_stale
+      report_stale(stale)
       false
     end
 
     # Rebuild only the README table of contents from the committed docs and
     # their spec `@category`/`@order` directives, without running any specs.
     def regenerate_readme
+      validate_translations
       generate_readme
+      config.locales.each { |locale| translate_readme(locale) }
       puts '✓ Regenerated README.md table of contents.'
     end
 
     private
+
+    def report_stale(stale)
+      return if stale.empty?
+
+      warn "✗ Platform-guide docs are out of date for #{stale.size} spec(s):"
+      stale.each { |spec_file| warn "  - #{spec_file} -> #{generate_output_filename(spec_file)}" }
+      warn ''
+      warn 'Regenerate the affected guide(s) and commit the result:'
+      stale.each { |spec_file| warn %(  rake "auto_platform_guide:generate[#{spec_file}]") }
+    end
 
     def doc_stale?(spec_file)
       output_file = generate_output_filename(spec_file)

@@ -69,6 +69,36 @@ contents; `nil` keeps `AutoPlatformGuide::Generator::README_PREAMBLE`. Note:
 `:selenium` support is unit-tested with mocked drivers — no CI job boots a real
 browser under either driver.
 
+### Translated guides
+
+The English `# =` comments in a spec stay the source. To add a language, list it
+and put one translation file next to each documented spec:
+
+```ruby
+config.locales = ['pt-BR']
+```
+
+```yaml
+# spec/system/orders_spec.pt-BR.yml
+source_digest: 1a2b3c4d5e6f   # printed by the error when it is missing or outdated
+sections:                     # same order and count as the `# =` / `# ==` headings
+  - title: Pedidos
+    body: |
+      Crie e acompanhe pedidos de clientes.
+  - title: Criar um pedido
+    body: Escolha um cliente, adicione itens e salve.
+```
+
+`rake auto_platform_guide:generate` writes `ORDERS.pt-BR.md` and `README.pt-BR.md`
+beside the English files, and `auto_platform_guide:check` fails when a translation
+is missing, has a different section count, or its `source_digest` no longer matches
+the English comments (that is how a changed English paragraph is noticed).
+
+Screenshots are captured once more per locale, with `DOC_LOCALE=<locale>` set and
+`I18n.locale` switched by `setup_rspec`, and saved under `screenshots_dir/<locale>/`.
+A host that does not use `setup_rspec` must switch its own locale from `DOC_LOCALE`.
+Serving the right file for the visitor's locale is up to the host.
+
 ```ruby
 # spec/rails_helper.rb
 require 'auto_platform_guide/rspec'

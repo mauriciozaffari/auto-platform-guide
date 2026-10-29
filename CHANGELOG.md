@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `locales` configuration: translated guides from per-spec `<spec>.<locale>.yml`
+  files, a localized README, locale-specific screenshot directories (`DOC_LOCALE`),
+  and a `check` that notices missing, mismatched or outdated translations.
+
+### Changed
+
+- `generate` now fails when a screenshot spec run fails, and shows that run's
+  output, instead of silently ignoring the failure.
+
 ## [0.1.0] - 2026-10-26
 
 Initial release: spec-driven doc generator, `doc_screenshot` helper, configurable

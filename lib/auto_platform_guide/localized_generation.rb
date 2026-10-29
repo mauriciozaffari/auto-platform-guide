@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 module AutoPlatformGuide
-  # Localized counterparts for generated guides.
+  # Localized counterparts for generated guides: `<spec>.<locale>.yml` holds the
+  # translated sections and `SOME-GUIDE.<locale>.md` is what gets generated.
   module LocalizedGeneration
     private
 
@@ -16,8 +17,21 @@ module AutoPlatformGuide
       parsed = spec(spec_file)
       expected = "#{render_doc_body(parsed.translated_comments(locale), parsed.screenshot_calls, locale:).rstrip}\n"
       strip_timestamp_header(File.read(path, encoding: 'UTF-8')) != expected
-    rescue Errno::ENOENT, KeyError, ArgumentError
+    rescue ArgumentError
       true
+    end
+
+    def readmes_stale?
+      config.locales.any? { |locale| translated_readme_content(locale) != File.read(translated_readme_path(locale)) }
+    rescue Errno::ENOENT
+      true
+    end
+
+    # Fail before writing anything when a translation is missing or outdated.
+    def validate_translations
+      find_documented_specs.product(config.locales).each do |spec_file, locale|
+        spec(spec_file).translated_comments(locale)
+      end
     end
 
     def translated_filename(spec_file, locale)
@@ -34,14 +48,22 @@ module AutoPlatformGuide
     end
 
     def translate_readme(locale)
+      File.write(translated_readme_path(locale), translated_readme_content(locale))
+    end
+
+    def translated_readme_path(locale)
+      File.join(config.generated_docs_dir, "README.#{locale}.md")
+    end
+
+    def translated_readme_content(locale)
       source = File.read(File.join(config.generated_docs_dir, 'README.md'))
       find_documented_specs.each do |file|
         parsed = spec(file)
-        translated = parsed.translated_comments(locale).first.fetch(:title)
+        title = parsed.translated_comments(locale).first.fetch(:title)
         source = source.gsub("[#{parsed.title}](#{File.basename(generate_output_filename(file))})",
-                             "[#{translated}](#{File.basename(translated_filename(file, locale))})")
+                             "[#{title}](#{File.basename(translated_filename(file, locale))})")
       end
-      File.write(File.join(config.generated_docs_dir, "README.#{locale}.md"), source)
+      source
     end
   end
 end

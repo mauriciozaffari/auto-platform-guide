@@ -55,8 +55,14 @@ module AutoPlatformGuide
     end
   end
 
+  def self.apply_doc_locale
+    locale = ENV.fetch('DOC_LOCALE', nil)
+    I18n.locale = locale if locale.present?
+  end
+
   def self.prepare_system_example(example, max_wait_time, screen_size, browser_options)
     Capybara.default_max_wait_time = max_wait_time
+    apply_doc_locale
 
     if screenshots_enabled?
       drive_with_browser(example, screen_size:, options: browser_options)
