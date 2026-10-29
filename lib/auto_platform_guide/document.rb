@@ -51,8 +51,9 @@ module AutoPlatformGuide
       end
 
       def sanitize(html)
-        tags = ActionView::Base.sanitized_allowed_tags + %w[table thead tbody th tr td img i]
-        attributes = ActionView::Base.sanitized_allowed_attributes + %w[style colspan src alt id class aria-hidden]
+        tags = ActionView::Base.sanitized_allowed_tags + %w[table thead tbody th tr td img i picture source]
+        attributes = ActionView::Base.sanitized_allowed_attributes +
+                     %w[style colspan src alt id class aria-hidden media srcset sizes type]
         super(html, tags:, attributes:)
       end
 
@@ -70,10 +71,10 @@ module AutoPlatformGuide
         sanitize(markdown.render(File.read(path)))
       end
 
-      # Convert Obsidian wikilinks to markdown links before parsing, leaving any
-      # text inside fenced or inline code untouched.
+      # Normalise wikilinks and <picture> blocks before parsing, leaving fenced
+      # and inline code untouched.
       def preprocess(document)
-        separate_blockquotes(replace_wikilinks(document))
+        separate_blockquotes(replace_wikilinks(collapse_pictures(document)))
       end
 
       def block_code(code, language)
@@ -141,19 +142,38 @@ module AutoPlatformGuide
         line.strip.empty?
       end
 
-      def replace_wikilinks(document)
+      # Redcarpet predates <picture> and treats it as inline HTML, so hard_wrap
+      # would turn the block's newlines into <br>. Collapse it onto one line.
+      def collapse_pictures(document)
+        outside_fences(document) { |text| collapse_picture_blocks(text) }
+      end
+
+      def collapse_picture_blocks(text)
+        text.gsub(%r{<picture\b.*?</picture>}mi) { |block| block.split(/\s*\n\s*/).join(' ') }
+      end
+
+      # Yields each stretch of the document that sits outside fenced code.
+      def outside_fences(document)
         in_fence = false
 
-        document.each_line.map do |line|
-          if line.start_with?('```')
+        document.split(/^([ \t]*```.*)$/).map do |segment|
+          if segment.match?(/\A[ \t]*```/)
             in_fence = !in_fence
-            line
+            segment
           elsif in_fence
-            line
+            segment
           else
-            replace_wikilinks_in_line(line)
+            yield(segment)
           end
         end.join
+      end
+
+      def replace_wikilinks(document)
+        outside_fences(document) { |text| replace_wikilinks_in_text(text) }
+      end
+
+      def replace_wikilinks_in_text(text)
+        text.each_line.map { |line| replace_wikilinks_in_line(line) }.join
       end
 
       def replace_wikilinks_in_line(line)

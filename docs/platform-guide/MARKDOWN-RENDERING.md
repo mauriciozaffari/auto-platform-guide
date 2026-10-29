@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-29 19:16:19 UTC
+Generated: 2026-10-29 19:23:47 UTC
 -->
 
 <h1 id="markdown-rendering">Markdown rendering</h1>
@@ -85,3 +85,23 @@ in the viewer and on GitHub.
 The viewer also converts Obsidian-style wikilinks such as
 `[[OVERVIEW|the overview]]`, but other markdown readers, GitHub included, show
 them literally.
+
+
+<h2 id="theme-aware-images">Theme-aware images</h2>
+
+
+The `<picture>` pattern renders, so one image can follow the reader's colour
+scheme:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+  <img alt="Logo" src="light.png">
+</picture>
+```
+
+Redcarpet predates the element and treats it as inline HTML, so the block is
+collapsed onto one line before parsing; otherwise `hard_wrap` would insert
+`<br>` inside it. The tags and their `media`, `srcset`, `sizes` and `type`
+attributes pass the sanitizer. The `<img>` is the fallback for renderers
+without `<picture>` support.

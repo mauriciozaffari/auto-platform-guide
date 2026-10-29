@@ -75,3 +75,21 @@
 # The viewer also converts Obsidian-style wikilinks such as
 # `[[OVERVIEW|the overview]]`, but other markdown readers, GitHub included, show
 # them literally.
+#
+# == Theme-aware images
+#
+# The `<picture>` pattern renders, so one image can follow the reader's colour
+# scheme:
+#
+# ```html
+# <picture>
+#   <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+#   <img alt="Logo" src="light.png">
+# </picture>
+# ```
+#
+# Redcarpet predates the element and treats it as inline HTML, so the block is
+# collapsed onto one line before parsing; otherwise `hard_wrap` would insert
+# `<br>` inside it. The tags and their `media`, `srcset`, `sizes` and `type`
+# attributes pass the sanitizer. The `<img>` is the fallback for renderers
+# without `<picture>` support.

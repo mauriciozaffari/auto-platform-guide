@@ -9,11 +9,12 @@
 # minimal starting point.
 #
 # == Preview
-# Light and dark, using the shipped stylesheet:
+# The shipped stylesheet, following the reader's colour scheme:
 #
-# ![Docs page in light mode](../images/docs-light.png)
-#
-# ![Docs page in dark mode](../images/docs-dark.png)
+# <picture>
+#   <source media="(prefers-color-scheme: dark)" srcset="../images/docs-dark.png">
+#   <img alt="Docs page in light mode" src="../images/docs-light.png">
+# </picture>
 #
 # == Markup
 # The shipped template wraps the rendered markdown in two sections:

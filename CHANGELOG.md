@@ -15,6 +15,8 @@ and this project adheres to
   theming.
 - `rails generate auto_platform_guide:styles`, which copies that stylesheet into
   the host app.
+- Theme-aware `<picture>` images, so one image can follow the reader's colour
+  scheme.
 
 ### Fixed
 

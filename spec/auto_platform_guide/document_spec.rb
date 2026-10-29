@@ -238,6 +238,38 @@ RSpec.describe AutoPlatformGuide::Document do
       end
     end
 
+    describe 'theme-aware images' do
+      let(:picture) do
+        <<~HTML
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="dark.png">
+            <img alt="Logo" src="light.png">
+          </picture>
+        HTML
+      end
+
+      it 'keeps the picture and source elements' do
+        html = render_markdown(picture)
+
+        expect(html).to include('<picture>')
+        expect(html).to include('<source media="(prefers-color-scheme: dark)" srcset="dark.png">')
+        expect(html).to include('<img alt="Logo" src="light.png">')
+      end
+
+      it 'collapses the block so hard_wrap adds no line breaks inside it' do
+        html = render_markdown(picture)
+
+        expect(html).not_to include('<br>')
+      end
+
+      it 'leaves a picture example inside a code fence untouched' do
+        html = render_markdown("```html\n#{picture}```\n")
+
+        expect(html).to include('&lt;picture&gt;')
+        expect(html).not_to include('<picture>')
+      end
+    end
+
     describe '#render' do
       let(:temp_file) { Tempfile.new(['test', '.md']) }
       let(:markdown_content) { "# Test\n\n![Alt Text](https://example.com/image.png \"Image Title\")" }

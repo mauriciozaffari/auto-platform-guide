@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-29 19:16:19 UTC
+Generated: 2026-10-29 19:23:47 UTC
 -->
 
 <h1 id="styling">Styling</h1>
@@ -11,11 +11,12 @@ minimal starting point.
 
 <h2 id="preview">Preview</h2>
 
-Light and dark, using the shipped stylesheet:
+The shipped stylesheet, following the reader's colour scheme:
 
-![Docs page in light mode](../images/docs-light.png)
-
-![Docs page in dark mode](../images/docs-dark.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../images/docs-dark.png">
+  <img alt="Docs page in light mode" src="../images/docs-light.png">
+</picture>
 
 
 <h2 id="markup">Markup</h2>
