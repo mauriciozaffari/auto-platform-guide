@@ -32,7 +32,8 @@ The gem documents itself: `docs/platform-guide/` is generated from
   needs no host helpers, partials or assets. Links are built from `docs_path`, so
   set it to the path you mount (default `/docs`). Mermaid fenced blocks render
   when a global `mermaid` is present and stay readable as source otherwise.
-  Override the template in the host app to change the surrounding chrome.
+  Override the template in the host app to change the surrounding chrome; see
+  [Styling](#styling) for the stylesheet and class contract.
 
 ## Installation
 
@@ -77,6 +78,29 @@ RSpec.configure do |config|
   AutoPlatformGuide.setup_rspec(config)
 end
 ```
+
+## Styling
+
+The gem ships plain markup and one optional stylesheet. Generate it into the
+app and import it:
+
+```bash
+bin/rails generate auto_platform_guide:styles
+```
+
+```css
+@import "docs";
+```
+
+Every rule is scoped to the classes the gem emits, so it will not leak. Colours,
+fonts and radii are `--apg-*` custom properties on `:root`; dark mode follows
+`prefers-color-scheme`. Code blocks stay dark in both schemes because Rouge
+writes token colours inline. See [Styling](docs/platform-guide/STYLING.md) for
+the class contract and how to change the code block theme.
+
+![Docs page in light mode](docs/images/docs-light.png)
+
+![Docs page in dark mode](docs/images/docs-dark.png)
 
 ## Writing a documented spec
 

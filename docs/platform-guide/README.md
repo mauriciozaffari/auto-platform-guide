@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-26 12:47:12 UTC
+Generated: 2026-10-29 19:16:19 UTC
 -->
 
 <h1 id="platform-guide">Platform Guide</h1>
@@ -24,4 +24,5 @@ flowchart LR
 
 - [Rake tasks](RAKE-TASKS.md)
 - [Docs viewer](DOCS-VIEWER.md)
+- [Styling](STYLING.md)
 - [Markdown rendering](MARKDOWN-RENDERING.md)
