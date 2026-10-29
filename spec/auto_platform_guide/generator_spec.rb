@@ -65,9 +65,10 @@ RSpec.describe AutoPlatformGuide::Generator do
       RUBY
     end
 
-    def write_translation(digest: AutoPlatformGuide::SpecFile.new(isolated_spec).source_digest)
+    def write_translation(digest: AutoPlatformGuide::SpecFile.new(isolated_spec).source_digest, category: nil)
       File.write('spec/example_spec.pt-BR.yml', <<~YAML)
         source_digest: #{digest}
+        #{"category: #{category}" if category}
         sections:
           - title: Configurações
             body: Gerencie as configurações.
@@ -89,6 +90,23 @@ RSpec.describe AutoPlatformGuide::Generator do
         expect(File.read('guides/EXAMPLE.pt-BR.md')).to include('Configurações', '/shots/pt-BR/settings.png')
         expect(File.read('guides/README.pt-BR.md')).to include('[Configurações](EXAMPLE.pt-BR.md)')
         expect(described_class.new.up_to_date?).to be(true)
+      end
+
+      it 'translates the README texts, category names and diagram, falling back to English' do
+        File.write(isolated_spec, "# @category Settings\n# @order 1\n#{File.read(isolated_spec)}")
+        write_translation(category: 'Configurações')
+        AutoPlatformGuide.configuration.localized_readme = { 'pt-BR' => { 'preamble' => "Guia\n",
+                                                                          'contents' => 'Índice' } }
+        described_class.new.generate(run_specs: false)
+
+        readme = File.read('guides/README.pt-BR.md')
+        expect(readme).to include("Guia\n", '<h2 id="table-of-contents">Índice</h2>',
+                                  '<h3 id="configuraes">Configurações')
+        expect(readme).to include('c0["Configurações"]')
+        expect(File.read('guides/README.md')).to include('Table of Contents', 'Settings')
+        expect(described_class.new.up_to_date?).to be(true)
+      ensure
+        AutoPlatformGuide.configuration.localized_readme = {}
       end
 
       it 'flags a translation as stale when the English source changes' do

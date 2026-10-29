@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'fileutils'
+require 'stringio'
 require 'pathname'
 
 module AutoPlatformGuide
@@ -252,34 +253,35 @@ module AutoPlatformGuide
     # `@order`. Called at the end of a full/partial generation run and standalone
     # via `regenerate_readme` (the `--readme-only` mode).
     def generate_readme
-      readme_path = File.join(config.generated_docs_dir, 'README.md')
+      File.write(File.join(config.generated_docs_dir, 'README.md'), "#{timestamp_header}#{readme_body}")
+    end
 
-      File.open(readme_path, 'w') do |f|
-        f.puts '<!--'
-        f.puts "Generated: #{generated_at}"
-        f.puts '-->'
-        f.puts
+    # The README markdown after the timestamp header. With a locale it uses the
+    # translated titles and category names, and `localized_readme[locale]`
+    # (`'preamble'`, `'contents'`) for the fixed texts, falling back to English.
+    def readme_body(locale = nil)
+      texts = config.localized_readme.fetch(locale.to_s, {})
+      out = StringIO.new
 
-        f.write(config.readme_preamble || README_PREAMBLE)
+      out.write(texts['preamble'] || (locale ? README_PREAMBLE : config.readme_preamble) || README_PREAMBLE)
 
-        # Build the TOC from every documented spec (not just the ones regenerated
-        # in this run) so running for a subset of specs doesn't drop other
-        # entries. Group by `@category` and order by `@order`.
-        groups = toc_groups
+      # Build the TOC from every documented spec (not just the ones regenerated
+      # in this run) so running for a subset of specs doesn't drop other
+      # entries. Group by `@category` and order by `@order`.
+      groups = toc_groups(locale)
 
-        f.puts category_workflow_diagram(groups.map(&:first))
-        f.puts
-        f.puts '<h2 id="table-of-contents">Table of Contents</h2>'
+      out.puts category_workflow_diagram(groups.map(&:first))
+      out.puts
+      out.puts %(<h2 id="table-of-contents">#{texts['contents'] || 'Table of Contents'}</h2>)
 
-        groups.each do |category, entries|
-          f.puts
-          f.puts %(<h3 id="#{slugify(category)}">#{category}</h3>)
-          f.puts
-          entries.each do |entry|
-            f.puts "- [#{entry[:title]}](#{entry[:file]})"
-          end
-        end
-      end
+      groups.each { |category, entries| out.write(toc_section(category, entries)) }
+
+      out.string
+    end
+
+    def toc_section(category, entries)
+      links = entries.map { |entry| "- [#{entry[:title]}](#{entry[:file]})\n" }.join
+      %(\n<h3 id="#{slugify(category)}">#{category}</h3>\n\n#{links})
     end
 
     # A Mermaid flowchart of the guide categories in workflow order, rendered by
@@ -303,25 +305,19 @@ module AutoPlatformGuide
     # listed in ascending order of the smallest `@order` they contain (ties broken
     # alphabetically), and entries within a category are ordered by `@order` then
     # title. Only specs whose generated doc actually exists on disk are linked.
-    def toc_groups
+    def toc_groups(locale = nil)
       entries = find_documented_specs.filter_map do |spec_file|
         file = File.basename(generate_output_filename(spec_file))
         next unless File.exist?(File.join(config.generated_docs_dir, file))
 
-        parsed = spec(spec_file)
-        directives = parsed.directives
-        {
-          file:,
-          title: parsed.title,
-          category: directives[:category] || DEFAULT_CATEGORY,
-          order: directives[:order] || DEFAULT_ORDER
-        }
+        toc_entry(spec_file, file, locale)
       end
 
-      entries
-        .group_by { |entry| entry[:category] }
-        .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
-        .map { |category, group| [category, group.sort_by { |entry| [entry[:order], entry[:title]] }] }
+      groups = entries.group_by { |entry| entry[:category] }
+                      .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
+      groups.map do |category, group|
+        [localized_category(group, category), group.sort_by { |entry| [entry[:order], entry[:title]] }]
+      end
     end
   end
 end

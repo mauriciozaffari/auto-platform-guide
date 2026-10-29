@@ -172,6 +172,20 @@ RSpec.describe AutoPlatformGuide::Document do
     end
   end
 
+  describe '#title with a generated heading' do
+    let(:path) { root.join('docs/EVENTS.pt-BR.md') }
+
+    before do
+      FileUtils.mkdir_p(path.dirname)
+      File.write(path, %(<!--\nGenerated: now\n-->\n\n<h1 id="eventos">Criar eventos</h1>\n\ntext\n))
+    end
+
+    it 'uses the first heading, so translated guides get their own title' do
+      expect(document.title).to eq('Criar eventos')
+      expect(document.breadcrumbs.last[:name]).to eq('Criar eventos')
+    end
+  end
+
   describe '#breadcrumbs' do
     subject(:breadcrumbs) { document.breadcrumbs }
 

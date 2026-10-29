@@ -89,6 +89,19 @@ sections:                     # same order and count as the `# =` / `# ==` headi
     body: Escolha um cliente, adicione itens e salve.
 ```
 
+Add `category: Pedidos` at the top level of the file to translate the spec's
+`@category` in the README, and set the README's fixed texts per locale (anything
+left out stays English):
+
+```ruby
+config.localized_readme = {
+  'pt-BR' => { 'preamble' => "<h1 id=\"guia\">Guia</h1>\n\nTexto...\n", 'contents' => 'Índice' }
+}
+```
+
+Guide titles and breadcrumbs come from the guide's first heading, so translated
+guides show their translated title.
+
 `rake auto_platform_guide:generate` writes `ORDERS.pt-BR.md` and `README.pt-BR.md`
 beside the English files, and `auto_platform_guide:check` fails when a translation
 is missing, has a different section count, or its `source_digest` no longer matches

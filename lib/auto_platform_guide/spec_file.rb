@@ -46,12 +46,16 @@ module AutoPlatformGuide
 
     # Translate each section while retaining its source line for screenshot placement.
     def translated_comments(locale)
-      path = @path.sub(/\.rb\z/, ".#{locale}.yml")
-      sections = translation_sections(path)
+      sections = translation(locale)['sections']
 
       doc_comments.zip(sections).map do |source, translated|
         source.merge(title: translated.fetch('title'), content: translated.fetch('body').lines.map(&:chomp))
       end
+    end
+
+    # The optional `category:` of a translation file, shown instead of `@category`.
+    def translated_category(locale)
+      translation(locale)['category']
     end
 
     # `{ path:, line_number: }` for every `doc_screenshot('...')` call.
@@ -77,7 +81,9 @@ module AutoPlatformGuide
       @lines ||= File.readlines(@path, encoding: 'UTF-8')
     end
 
-    def translation_sections(path)
+    # The parsed and validated `<spec>.<locale>.yml`.
+    def translation(locale)
+      path = @path.sub(/\.rb\z/, ".#{locale}.yml")
       raise ArgumentError, "Missing translation file #{path}" unless File.file?(path)
 
       data = YAML.safe_load_file(path)
@@ -92,7 +98,7 @@ module AutoPlatformGuide
               "#{path} is out of date: set `source_digest: #{source_digest}` after updating it"
       end
 
-      sections
+      data
     end
 
     def first_match(pattern)
