@@ -140,6 +140,14 @@ RSpec.describe AutoPlatformGuide::Generator do
         expect(described_class.new.send(:translation_stale?, isolated_spec, 'pt-BR')).to be(true)
       end
 
+      it 'rejects sections missing a title or body' do
+        write_translation
+        path = 'spec/example_spec.pt-BR.yml'
+        File.write(path, File.read(path).sub('body: Mais informações.', 'body:'))
+        expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
+          .to raise_error(ArgumentError, /sections need a title and body/)
+      end
+
       it 'names the missing translation file' do
         expect { AutoPlatformGuide::SpecFile.new(isolated_spec).translated_comments('pt-BR') }
           .to raise_error(ArgumentError, /Missing translation file/)
@@ -155,6 +163,14 @@ RSpec.describe AutoPlatformGuide::Generator do
         described_class.new.regenerate_readme
         expect(described_class.new.up_to_date?).to be(true)
       end
+    end
+
+    it 'does not run the suite when the spec has no screenshot calls' do
+      File.write(isolated_spec, "# = Guide\n# Content\n")
+      runner = described_class.new([isolated_spec])
+      allow(runner).to receive(:system)
+      runner.send(:run_spec_with_screenshots, isolated_spec)
+      expect(runner).not_to have_received(:system)
     end
 
     it 'fails when screenshot capture fails in either locale' do

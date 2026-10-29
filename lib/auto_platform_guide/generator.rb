@@ -174,6 +174,8 @@ module AutoPlatformGuide
       # Only the examples that take screenshots run in the browser; the rest of
       # the file would otherwise be forced through it too (SCREENSHOTS=true).
       lines = spec(spec_file).screenshot_calls.pluck(:line_number).uniq
+      return if lines.empty?
+
       command = ['bundle', 'exec', 'rspec', '--format', 'documentation', *lines.map { |line| "#{spec_file}:#{line}" }]
       raise "Screenshot capture failed: #{spec_file}" unless system({ 'SCREENSHOTS' => 'true' }, *command)
 
@@ -263,7 +265,7 @@ module AutoPlatformGuide
       texts = config.localized_readme.fetch(locale.to_s, {})
       out = StringIO.new
 
-      out.write(texts['preamble'] || (locale ? README_PREAMBLE : config.readme_preamble) || README_PREAMBLE)
+      out.write(texts['preamble'] || config.readme_preamble || README_PREAMBLE)
 
       # Build the TOC from every documented spec (not just the ones regenerated
       # in this run) so running for a subset of specs doesn't drop other

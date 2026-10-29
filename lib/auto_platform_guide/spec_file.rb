@@ -97,6 +97,11 @@ module AutoPlatformGuide
         raise ArgumentError,
               "#{path} is out of date: set `source_digest: #{source_digest}` after updating it"
       end
+      unless sections.all? do |section|
+        section.is_a?(Hash) && section['title'].is_a?(String) && section['body'].is_a?(String)
+      end
+        raise ArgumentError, "#{path} sections need a title and body"
+      end
 
       data
     end

@@ -336,7 +336,9 @@ RSpec.describe AutoPlatformGuide do
 
       expect(rake_tasks.size).to eq(1)
       rake_tasks.first.call
-      expect(Rake::Task.task_defined?('auto_platform_guide:generate')).to be(true)
+      %w[generate check readme render].each do |name|
+        expect(Rake::Task["auto_platform_guide:#{name}"].prerequisites.delete('environment')).to eq('environment')
+      end
     end
   end
 

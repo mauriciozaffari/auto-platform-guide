@@ -10,6 +10,9 @@ module AutoPlatformGuide
 
     rake_tasks do
       require 'auto_platform_guide/rake_tasks'
+      %w[generate check readme render].each do |name|
+        Rake::Task["auto_platform_guide:#{name}"].enhance(['environment'])
+      end
     end
   end
 end
