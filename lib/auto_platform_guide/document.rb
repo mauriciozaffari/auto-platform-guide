@@ -34,9 +34,11 @@ module AutoPlatformGuide
         'caution' => 'ban'
       }.freeze
 
-      # Redcarpet merges adjacent blockquotes into one callback, so split the
-      # quote at each callout marker and render them separately.
-      CALLOUT_SPLIT = /(?=<p>\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\])/i
+      # Redcarpet folds blockquotes separated by a blank line into a single
+      # block_quote callback, so a plain quote after a callout lands inside it.
+      # A comment between adjacent quote groups forces the break; the final
+      # sanitize strips the comment.
+      QUOTE_SEPARATOR = '<!--apg:quote-separator-->'
 
       def self.render(path, base_dir: nil)
         new(base_dir:).render(path)
@@ -71,7 +73,7 @@ module AutoPlatformGuide
       # Convert Obsidian wikilinks to markdown links before parsing, leaving any
       # text inside fenced or inline code untouched.
       def preprocess(document)
-        replace_wikilinks(document)
+        separate_blockquotes(replace_wikilinks(document))
       end
 
       def block_code(code, language)
@@ -93,21 +95,50 @@ module AutoPlatformGuide
       end
 
       def block_quote(quote)
-        quote.split(CALLOUT_SPLIT).reject(&:empty?).map { |segment| render_quote(segment) }.join("\n")
-      end
-
-      private
-
-      def render_quote(segment)
-        callout = segment.match(CALLOUT)
-        return %(<blockquote>#{segment}</blockquote>) unless callout
+        callout = quote.match(CALLOUT)
+        return %(<blockquote>#{quote}</blockquote>) unless callout
 
         type = callout[1].downcase
-        body = segment.sub(CALLOUT, '<p>')
+        body = quote.sub(CALLOUT, '<p>')
         icon = tag.i(class: "fa fa-#{CALLOUT_ICONS.fetch(type)}", aria: { hidden: true })
         title = %(<p class="callout-title">#{icon} #{type.titleize}</p>)
 
         %(<blockquote class="callout callout-#{type}">#{title}\n#{body}</blockquote>)
+      end
+
+      private
+
+      # Insert a separator between adjacent quote groups so Redcarpet emits one
+      # block_quote callback per quote. Fenced code is left untouched.
+      def separate_blockquotes(document)
+        lines = document.lines
+        in_fence = false
+
+        lines.each_with_index.flat_map do |line, index|
+          in_fence = !in_fence if line.start_with?('```')
+          next [line] unless !in_fence && blank_line?(line) && quote_group?(lines, index)
+
+          [line, "#{QUOTE_SEPARATOR}\n"]
+        end.join
+      end
+
+      # A blank line sits between two quote groups when the nearest non-blank
+      # line on each side starts with `>`.
+      def quote_group?(lines, index)
+        quote_line?(nearest_line(lines[0...index].reverse)) &&
+          quote_line?(nearest_line(lines[(index + 1)..]))
+      end
+
+      def nearest_line(candidates)
+        candidates.find { |line| !blank_line?(line) }
+      end
+
+      def quote_line?(line)
+        line.to_s.lstrip.start_with?('>')
+      end
+
+      def blank_line?(line)
+        line.strip.empty?
       end
 
       def replace_wikilinks(document)

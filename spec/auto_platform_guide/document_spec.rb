@@ -327,6 +327,33 @@ RSpec.describe AutoPlatformGuide::Document do
         expect(html).not_to include('[!TIP]')
       end
 
+      it 'keeps a plain blockquote after a callout out of the callout' do
+        html = render_markdown("> [!NOTE]\n> One.\n\n> Plain quote.\n")
+
+        expect(html.scan('<blockquote').size).to eq(2)
+        expect(html).to include('<blockquote>')
+        expect(html).to include('<p>Plain quote.</p>')
+      end
+
+      it 'separates adjacent regular blockquotes' do
+        html = render_markdown("> One.\n\n> Two.\n")
+
+        expect(html.scan('<blockquote').size).to eq(2)
+      end
+
+      it 'leaves quote-like lines inside a code fence untouched' do
+        html = render_markdown("```markdown\n> One.\n\n> Two.\n```\n")
+
+        expect(html).not_to include('apg:quote-separator')
+        expect(html.scan('<blockquote').size).to eq(0)
+      end
+
+      it 'leaves a trailing blank line after a quote alone' do
+        html = render_markdown("> One.\n\n")
+
+        expect(html.scan('<blockquote').size).to eq(1)
+      end
+
       it 'keeps regular blockquotes unchanged' do
         # Whitespace inside the quote depends on the host's sanitizer vendor
         # (HTML5 under Rails load_defaults, HTML4 standalone): assert fragments.
