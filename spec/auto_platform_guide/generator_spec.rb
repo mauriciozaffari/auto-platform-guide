@@ -96,7 +96,9 @@ RSpec.describe AutoPlatformGuide::Generator do
         write_translation
         described_class.new.generate(run_specs: false)
 
-        expect(YAML.load_file('guides/toc.pt-BR.yml')).to eq([{ 'id' => 'EXAMPLE', 'title' => 'Configurações' }])
+        expect(YAML.load_file('guides/toc.pt-BR.yml')).to eq(
+          [{ 'id' => 'EXAMPLE', 'title' => 'Configurações', 'category' => 'Other' }]
+        )
       end
 
       it 'translates the README texts, category names and diagram, falling back to English' do
@@ -298,8 +300,8 @@ RSpec.describe AutoPlatformGuide::Generator do
 
       expect(YAML.load_file('guides/toc.yml')).to eq(
         [
-          { 'id' => 'SECOND', 'title' => 'Second Guide' },
-          { 'id' => 'EXAMPLE', 'title' => 'Managing Settings' }
+          { 'id' => 'SECOND', 'title' => 'Second Guide', 'category' => 'Settings' },
+          { 'id' => 'EXAMPLE', 'title' => 'Managing Settings', 'category' => 'Other' }
         ]
       )
     end

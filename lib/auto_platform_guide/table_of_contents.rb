@@ -3,46 +3,79 @@
 require 'yaml'
 
 module AutoPlatformGuide
-  # Ordered guides for a locale, read from the `toc.yml` the generator writes
-  # next to the README. Lets a host app build previous/next navigation from
-  # generated data, without parsing the README or reading specs at runtime.
+  # The ordered guides of one locale. The generator builds one from the spec
+  # directives and writes it as `toc.yml`; a host app loads the committed file to
+  # navigate between guides, and the README sections are rendered from `#groups`.
   class TableOfContents
-    Entry = Data.define(:id, :title)
+    # One guide in the table of contents.
+    class Entry
+      attr_reader :id, :title, :category
 
-    # Entries around `id` for a locale, e.g. `{ previous: Entry, next: Entry }`.
-    def self.neighbours(id, locale: nil)
-      new(locale:).neighbours(id)
-    end
+      def initialize(id:, title:, category:)
+        @id = id
+        @title = title
+        @category = category
+      end
 
-    def initialize(locale: nil)
-      @locale = locale
-    end
-
-    def entries
-      @entries ||= YAML.load_file(path).map do |entry|
-        Entry.new(id: entry.fetch('id'), title: entry.fetch('title'))
+      def to_h
+        { 'id' => id, 'title' => title, 'category' => category }
       end
     end
 
+    # Reads the committed toc for a locale, falling back to English when the
+    # locale has none.
+    def self.load(locale: nil)
+      path = path_for(locale)
+      path = path_for(nil) unless File.exist?(path)
+      entries = YAML.load_file(path).map do |entry|
+        Entry.new(id: entry['id'], title: entry['title'], category: entry['category'])
+      end
+      new(entries, locale:)
+    end
+
+    # Where a locale's toc is written.
+    def self.path_for(locale)
+      File.join(AutoPlatformGuide.configuration.generated_docs_dir, locale ? "toc.#{locale}.yml" : 'toc.yml')
+    end
+
+    def initialize(entries, locale: nil)
+      @entries = entries
+      @locale = locale
+    end
+
+    attr_reader :entries, :locale
+
+    # Guides by category, in the order the categories first appear.
+    def groups
+      entries.group_by(&:category)
+    end
+
+    # The guides either side of `id`, e.g. `{ previous: Entry, next: Entry }`.
     # Omits a side that has no neighbour and returns `{}` for an unknown guide.
     def neighbours(id)
       sequence[id] || {}
     end
 
-    private
+    def write
+      File.write(self.class.path_for(locale), to_yaml)
+    end
 
-    attr_reader :locale
+    def stale?
+      File.read(self.class.path_for(locale), encoding: 'UTF-8') != to_yaml
+    rescue Errno::ENOENT
+      true
+    end
+
+    def to_yaml
+      entries.map(&:to_h).to_yaml
+    end
+
+    private
 
     def sequence
       @sequence ||= [nil, *entries, nil].each_cons(3).to_h do |previous, entry, following|
         [entry.id, { previous:, next: following }.compact]
       end
-    end
-
-    def path
-      directory = AutoPlatformGuide.configuration.generated_docs_dir
-      localized = File.join(directory, "toc.#{locale}.yml")
-      locale && File.exist?(localized) ? localized : File.join(directory, 'toc.yml')
     end
   end
 end

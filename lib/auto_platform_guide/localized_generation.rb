@@ -28,13 +28,7 @@ module AutoPlatformGuide
     # The generated toc files drive host-app navigation, so a stale or missing
     # one is as stale as the docs themselves.
     def tocs_stale?
-      ([nil] + config.locales).any? { |locale| toc_stale?(locale) }
-    end
-
-    def toc_stale?(locale)
-      File.read(toc_path(locale), encoding: 'UTF-8') != table_of_contents(locale).to_yaml
-    rescue Errno::ENOENT
-      true
+      ([nil] + config.locales).any? { |locale| table_of_contents(locale).stale? }
     end
 
     def readme_stale?(locale)
@@ -68,7 +62,7 @@ module AutoPlatformGuide
       parsed = spec(spec_file)
       directives = parsed.directives
       {
-        file: locale ? file.sub(/\.md\z/, ".#{locale}.md") : file,
+        id: file.delete_suffix('.md'),
         title: locale ? parsed.translated_comments(locale).first.fetch(:title) : parsed.title,
         category: directives[:category] || Generator::DEFAULT_CATEGORY,
         translated_category: locale ? parsed.translated_category(locale) : nil,

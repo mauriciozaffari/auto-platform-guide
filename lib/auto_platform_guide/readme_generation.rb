@@ -13,28 +13,25 @@ module AutoPlatformGuide
       write_readme(nil)
     end
 
-    # Ordered guides for a locale, as written to `toc.yml` next to the README.
-    # Host apps read it through TableOfContents to build navigation without
-    # parsing the README or reading specs at runtime.
+    # The ordered guides of a locale. The README sections and the generated
+    # `toc.yml` are both rendered from it, so navigation cannot drift from the
+    # index, and host apps read the toc instead of parsing the README.
     def table_of_contents(locale = nil)
-      toc_groups(locale).flat_map(&:last).map do |entry|
-        id = entry[:file].delete_suffix('.md')
-        id = id.delete_suffix(".#{locale}") if locale
-        { 'id' => id, 'title' => entry[:title] }
-      end
+      entries = toc_groups(locale).flat_map { |category, group| guides(category, group) }
+      TableOfContents.new(entries, locale:)
     end
 
     def write_readme(locale)
+      table_of_contents(locale).write
       File.write(readme_path(locale), "#{timestamp_header}#{readme_body(locale)}")
-      File.write(toc_path(locale), table_of_contents(locale).to_yaml)
     end
 
     def readme_path(locale)
       File.join(config.generated_docs_dir, locale ? "README.#{locale}.md" : 'README.md')
     end
 
-    def toc_path(locale)
-      File.join(config.generated_docs_dir, locale ? "toc.#{locale}.yml" : 'toc.yml')
+    def guides(category, entries)
+      entries.map { |entry| TableOfContents::Entry.new(id: entry[:id], title: entry[:title], category:) }
     end
 
     # The README markdown after the timestamp header. With a locale it uses the
@@ -49,19 +46,20 @@ module AutoPlatformGuide
       # Build the TOC from every documented spec (not just the ones regenerated
       # in this run) so running for a subset of specs doesn't drop other
       # entries. Group by `@category` and order by `@order`.
-      groups = toc_groups(locale)
+      groups = table_of_contents(locale).groups
 
-      out.puts category_workflow_diagram(groups.map(&:first))
+      out.puts category_workflow_diagram(groups.keys)
       out.puts
       out.puts %(<h2 id="table-of-contents">#{texts['contents'] || 'Table of Contents'}</h2>)
 
-      groups.each { |category, entries| out.write(toc_section(category, entries)) }
+      groups.each { |category, entries| out.write(toc_section(category, entries, locale)) }
 
       out.string
     end
 
-    def toc_section(category, entries)
-      links = entries.map { |entry| "- [#{entry[:title]}](#{entry[:file]})\n" }.join
+    def toc_section(category, entries, locale)
+      suffix = locale ? ".#{locale}.md" : '.md'
+      links = entries.map { |entry| "- [#{entry.title}](#{entry.id}#{suffix})\n" }.join
       %(\n<h3 id="#{slugify(category)}">#{category}</h3>\n\n#{links})
     end
 
@@ -94,11 +92,10 @@ module AutoPlatformGuide
         toc_entry(spec_file, file, locale)
       end
 
-      groups = entries.group_by { |entry| entry[:category] }
-                      .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
-      groups.map do |category, group|
-        [localized_category(group, category), group.sort_by { |entry| [entry[:order], entry[:title]] }]
-      end
+      entries.sort_by { |entry| [entry[:order], entry[:title]] }
+             .group_by { |entry| entry[:category] }
+             .sort_by { |category, group| [group.first[:order], category] }
+             .map { |category, group| [localized_category(group, category), group] }
     end
   end
 end
