@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-12
+
 ### Added
 
 - `AutoPlatformGuide::TableOfContents`: reads the `toc.yml` the generator writes
@@ -84,6 +86,7 @@ browser driver wiring, and markdown docs viewer.
 
 - `bin/generate-docs`; use `auto_platform_guide:generate` instead.
 
-[Unreleased]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/mauriciozaffari/auto-platform-guide/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mauriciozaffari/auto-platform-guide/releases/tag/v0.1.0
