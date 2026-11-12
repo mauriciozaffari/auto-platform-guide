@@ -13,6 +13,15 @@ The gem documents itself: `docs/platform-guide/` is generated from
 - `AutoPlatformGuide::Generator` renders markdown guides from `# =` doc comments in
   system specs into `generated_docs_dir`, with an ordered README TOC grouped by
   `@category`/`@order` directives.
+- `AutoPlatformGuide::TableOfContents` reads the `toc.yml` the generator writes next
+  to the README (`toc.<locale>.yml` for a translated run), so a host app can build
+  previous/next navigation from generated data, without parsing the README or
+  reading specs at runtime:
+
+  ```ruby
+  AutoPlatformGuide::TableOfContents.neighbours('EVENTS', locale: I18n.locale)
+  # => { previous: #<data Entry id="DELIVERIES", title="Deliveries">, next: #<data Entry ...> }
+  ```
 - `AutoPlatformGuide.setup_rspec(config)` wires system-spec screenshot support:
   `doc_screenshot('name')` captures to `screenshots_dir` when `SCREENSHOTS=true`,
   and specs run on `rack_test` unless they need a browser (`:js` tag or

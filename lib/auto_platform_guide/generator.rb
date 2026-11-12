@@ -3,6 +3,7 @@
 require 'fileutils'
 require 'stringio'
 require 'pathname'
+require 'yaml'
 
 module AutoPlatformGuide
   # Generates markdown guides from system specs with doc comments, plus the
@@ -11,6 +12,7 @@ module AutoPlatformGuide
   # SCREENSHOTS=true run.
   class Generator
     include LocalizedGeneration
+    include ReadmeGeneration
 
     # Fallbacks for specs that omit the directives below. Specs with no
     # `@category` collect under DEFAULT_CATEGORY; specs with no `@order` sort
@@ -96,13 +98,13 @@ module AutoPlatformGuide
     # screenshot binaries themselves. Returns true when everything is up to date.
     def up_to_date?
       stale = find_documented_specs.select { |spec_file| doc_stale?(spec_file) || translations_stale?(spec_file) }
-      readme_stale = stale.empty? && readmes_stale?
+      readme_stale = stale.empty? && (readmes_stale? || tocs_stale?)
       unless stale.any? || readme_stale
         puts '✓ Platform-guide docs are up to date.'
         return true
       end
 
-      warn '✗ Localized README is out of date; run rake auto_platform_guide:readme' if readme_stale
+      warn '✗ Generated README or toc is out of date; run rake auto_platform_guide:readme' if readme_stale
       report_stale(stale)
       false
     end
@@ -249,77 +251,6 @@ module AutoPlatformGuide
           .gsub(/[^a-z0-9\s-]/, '')
           .gsub(/\s+/, '-').squeeze('-')
           .gsub(/^-|-$/, '')
-    end
-
-    # Writes the README table of contents grouped by `@category` and ordered by
-    # `@order`. Called at the end of a full/partial generation run and standalone
-    # via `regenerate_readme` (the `--readme-only` mode).
-    def generate_readme
-      File.write(File.join(config.generated_docs_dir, 'README.md'), "#{timestamp_header}#{readme_body}")
-    end
-
-    # The README markdown after the timestamp header. With a locale it uses the
-    # translated titles and category names, and `localized_readme[locale]`
-    # (`'preamble'`, `'contents'`) for the fixed texts, falling back to English.
-    def readme_body(locale = nil)
-      texts = config.localized_readme.fetch(locale.to_s, {})
-      out = StringIO.new
-
-      out.write(texts['preamble'] || config.readme_preamble || README_PREAMBLE)
-
-      # Build the TOC from every documented spec (not just the ones regenerated
-      # in this run) so running for a subset of specs doesn't drop other
-      # entries. Group by `@category` and order by `@order`.
-      groups = toc_groups(locale)
-
-      out.puts category_workflow_diagram(groups.map(&:first))
-      out.puts
-      out.puts %(<h2 id="table-of-contents">#{texts['contents'] || 'Table of Contents'}</h2>)
-
-      groups.each { |category, entries| out.write(toc_section(category, entries)) }
-
-      out.string
-    end
-
-    def toc_section(category, entries)
-      links = entries.map { |entry| "- [#{entry[:title]}](#{entry[:file]})\n" }.join
-      %(\n<h3 id="#{slugify(category)}">#{category}</h3>\n\n#{links})
-    end
-
-    # A Mermaid flowchart of the guide categories in workflow order, rendered by
-    # the in-app docs viewer. Derived from the same ordered categories as the TOC,
-    # so it never drifts from the actual guides.
-    def category_workflow_diagram(categories)
-      return '' if categories.empty?
-
-      nodes = categories.each_with_index.map { |category, index| %(c#{index}["#{category}"]) }
-      <<~DIAGRAM.chomp
-
-        ```mermaid
-        flowchart LR
-            #{nodes.join(' --> ')}
-        ```
-      DIAGRAM
-    end
-
-    # Returns the TOC as an ordered list of [category, entries] pairs.
-    # Category order is derived entirely from the specs: categories are
-    # listed in ascending order of the smallest `@order` they contain (ties broken
-    # alphabetically), and entries within a category are ordered by `@order` then
-    # title. Only specs whose generated doc actually exists on disk are linked.
-    def toc_groups(locale = nil)
-      entries = find_documented_specs.filter_map do |spec_file|
-        file = File.basename(generate_output_filename(spec_file))
-        next unless File.exist?(File.join(config.generated_docs_dir, file))
-
-        toc_entry(spec_file, file, locale)
-      end
-
-      groups = entries.group_by { |entry| entry[:category] }
-                      .sort_by { |category, group| [group.map { |entry| entry[:order] }.min, category] }
-      groups.map do |category, group|
-        [localized_category(group, category), group.sort_by { |entry| [entry[:order], entry[:title]] }]
-      end
     end
   end
 end

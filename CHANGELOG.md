@@ -8,6 +8,17 @@ and this project adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `AutoPlatformGuide::TableOfContents`: reads the `toc.yml` the generator writes
+  next to each README (`toc.<locale>.yml` for translated runs) and returns the
+  guides around an id as `{ previous:, next: }`, so a host app can build
+  previous/next navigation without parsing the README or reading specs at runtime.
+
+### Changed
+
+- `check` also reports a missing or outdated `toc.yml` next to the README.
+
 ## [0.2.0] - 2026-10-29
 
 ### Added

@@ -25,8 +25,20 @@ module AutoPlatformGuide
       config.locales.any? { |locale| readme_stale?(locale) }
     end
 
+    # The generated toc files drive host-app navigation, so a stale or missing
+    # one is as stale as the docs themselves.
+    def tocs_stale?
+      ([nil] + config.locales).any? { |locale| toc_stale?(locale) }
+    end
+
+    def toc_stale?(locale)
+      File.read(toc_path(locale), encoding: 'UTF-8') != table_of_contents(locale).to_yaml
+    rescue Errno::ENOENT
+      true
+    end
+
     def readme_stale?(locale)
-      committed = strip_timestamp_header(File.read(translated_readme_path(locale), encoding: 'UTF-8'))
+      committed = strip_timestamp_header(File.read(readme_path(locale), encoding: 'UTF-8'))
       committed != readme_body(locale)
     rescue Errno::ENOENT
       true
@@ -70,11 +82,7 @@ module AutoPlatformGuide
     end
 
     def translate_readme(locale)
-      File.write(translated_readme_path(locale), "#{timestamp_header}#{readme_body(locale)}")
-    end
-
-    def translated_readme_path(locale)
-      File.join(config.generated_docs_dir, "README.#{locale}.md")
+      write_readme(locale)
     end
   end
 end

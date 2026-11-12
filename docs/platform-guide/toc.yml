@@ -1,0 +1,13 @@
+---
+- id: OVERVIEW
+  title: Auto Platform Guide
+- id: DOCUMENTING-SPECS
+  title: Documenting specs
+- id: RAKE-TASKS
+  title: Rake tasks
+- id: DOCS-VIEWER
+  title: Docs viewer
+- id: STYLING
+  title: Styling
+- id: MARKDOWN-RENDERING
+  title: Markdown rendering
