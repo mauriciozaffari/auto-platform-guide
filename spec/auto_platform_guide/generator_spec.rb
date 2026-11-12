@@ -92,6 +92,13 @@ RSpec.describe AutoPlatformGuide::Generator do
         expect(described_class.new.up_to_date?).to be(true)
       end
 
+      it 'writes a localized toc with locale-free ids' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+
+        expect(YAML.load_file('guides/toc.pt-BR.yml')).to eq([{ 'id' => 'EXAMPLE', 'title' => 'Configurações' }])
+      end
+
       it 'translates the README texts, category names and diagram, falling back to English' do
         File.write(isolated_spec, "# @category Settings\n# @order 1\n#{File.read(isolated_spec)}")
         write_translation(category: 'Configurações')

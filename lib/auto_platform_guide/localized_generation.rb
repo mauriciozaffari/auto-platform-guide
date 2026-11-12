@@ -61,7 +61,7 @@ module AutoPlatformGuide
         body = render_doc_body(parsed.translated_comments(locale), parsed.screenshot_calls, locale:)
         File.write(translated_filename(file, locale), "#{timestamp_header}#{body.rstrip}\n")
       end
-      translate_readme(locale)
+      write_readme(locale)
     end
 
     def toc_entry(spec_file, file, locale)
@@ -79,10 +79,6 @@ module AutoPlatformGuide
     # Group name: the first translated `category:` of its guides, else the English one.
     def localized_category(group, category)
       group.filter_map { |entry| entry[:translated_category] }.first || category
-    end
-
-    def translate_readme(locale)
-      write_readme(locale)
     end
   end
 end

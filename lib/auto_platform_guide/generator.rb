@@ -114,7 +114,7 @@ module AutoPlatformGuide
     def regenerate_readme
       validate_translations
       generate_readme
-      config.locales.each { |locale| translate_readme(locale) }
+      config.locales.each { |locale| write_readme(locale) }
       puts '✓ Regenerated README.md table of contents.'
     end
 
