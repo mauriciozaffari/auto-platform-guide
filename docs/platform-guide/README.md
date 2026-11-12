@@ -1,5 +1,5 @@
 <!--
-Generated: 2026-10-29 19:23:47 UTC
+Generated: 2026-11-12 15:32:19 UTC
 -->
 
 <h1 id="platform-guide">Platform Guide</h1>

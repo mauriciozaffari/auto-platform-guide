@@ -1,0 +1,19 @@
+---
+- id: OVERVIEW
+  title: Auto Platform Guide
+  category: Getting Started
+- id: DOCUMENTING-SPECS
+  title: Documenting specs
+  category: Getting Started
+- id: RAKE-TASKS
+  title: Rake tasks
+  category: Reference
+- id: DOCS-VIEWER
+  title: Docs viewer
+  category: Reference
+- id: STYLING
+  title: Styling
+  category: Reference
+- id: MARKDOWN-RENDERING
+  title: Markdown rendering
+  category: Reference

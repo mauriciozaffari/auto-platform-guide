@@ -92,6 +92,15 @@ RSpec.describe AutoPlatformGuide::Generator do
         expect(described_class.new.up_to_date?).to be(true)
       end
 
+      it 'writes a localized toc with locale-free ids' do
+        write_translation
+        described_class.new.generate(run_specs: false)
+
+        expect(YAML.load_file('guides/toc.pt-BR.yml')).to eq(
+          [{ 'id' => 'EXAMPLE', 'title' => 'Configurações', 'category' => 'Other' }]
+        )
+      end
+
       it 'translates the README texts, category names and diagram, falling back to English' do
         File.write(isolated_spec, "# @category Settings\n# @order 1\n#{File.read(isolated_spec)}")
         write_translation(category: 'Configurações')
@@ -272,6 +281,43 @@ RSpec.describe AutoPlatformGuide::Generator do
       expect(readme.index('id="settings"')).to be < readme.index('id="other"')
       expect(readme).to include('[Second Guide](SECOND.md)')
       expect(readme).to include('flowchart LR')
+    end
+
+    it 'writes the ordered toc next to the readme' do
+      File.write('spec/second_spec.rb', <<~RUBY)
+        # @category Settings
+        # @order 100
+        #
+        # = Second Guide
+        # Words.
+        describe 'Second' do
+        end
+      RUBY
+      FileUtils.mkdir_p('guides')
+      FileUtils.touch('guides/SECOND.md')
+      FileUtils.touch('guides/EXAMPLE.md')
+      described_class.run(['--readme-only'])
+
+      expect(YAML.load_file('guides/toc.yml')).to eq(
+        [
+          { 'id' => 'SECOND', 'title' => 'Second Guide', 'category' => 'Settings' },
+          { 'id' => 'EXAMPLE', 'title' => 'Managing Settings', 'category' => 'Other' }
+        ]
+      )
+    end
+
+    it 'flags a missing or outdated toc' do
+      described_class.run(['--render-only', isolated_spec])
+      expect(described_class.new([isolated_spec]).up_to_date?).to be(true)
+
+      File.write('guides/toc.yml', "--- []\n")
+      expect(described_class.new([isolated_spec]).up_to_date?).to be(false)
+
+      FileUtils.rm('guides/toc.yml')
+      expect(described_class.new([isolated_spec]).up_to_date?).to be(false)
+
+      described_class.new([isolated_spec]).regenerate_readme
+      expect(described_class.new([isolated_spec]).up_to_date?).to be(true)
     end
   end
 
